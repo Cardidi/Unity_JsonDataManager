@@ -12,10 +12,10 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
     public struct FSPath
     {
 
-        private static Regex
-            generator_container = new Regex(@"^(?<container>[\w\d\^\W]+)://(?<url>[\w\d\-_/.]+)$"),
-            generator_path = new Regex(@"/(?<dirName>[\w\d\-_\.]+)"),
-            generator_fileName = new Regex(@"^(?<fileName>[\w\d-_]*)\.(?<fileType>[\w\d]*)$");
+        private static readonly Regex
+            generator_container = new Regex(@"^(?<container>[\w\d_-]+):/(?<url>[\w\d\-_/.\s]+)$"),
+            generator_path = new Regex(@"\G/(?<dirName>[\w\d\-_\.\s]*)"),
+            generator_fileName = new Regex(@"^(?<fileName>[\w\d\s-_\.]*)\.(?<fileType>[\w\d]*)$");
         
         /// <summary>
         /// Create a new FSPath by path string (Full or short)
@@ -26,7 +26,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             // Safety
             path = path.Trim();
             if (String.IsNullOrWhiteSpace(path))
-                throw new Exception("Invalid Format");
+                throw new FormatException("Empty path can not be a valid FSPath.");
 
             // Init
             ContainerName = "current";
@@ -35,68 +35,66 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             _cachedShortPath = _cachedFullPath = "";
             
             var container = generator_container.Match(path);
+            MatchCollection url;
             var dics = new List<string>();
             
             // Match container name
             if (container.Success)
             {
                 ContainerName = container.Groups["container"].Value.ToLower();
-                
                 // Match path
-                var p = generator_path.Matches(container.Groups["url"].Value);
-                for (var i = 0; i < p.Count; i++)
+                var urlP = container.Groups["url"].Value;
+                if (urlP.StartsWith("/"))
+                    url = generator_path.Matches(urlP);
+                else
+                    throw new FormatException("You must link container and path by ://");
+            }
+            else
+            {
+                if (path == "/")
                 {
-                    var dir = p[i].Groups["dirName"].Value;
+                    DirectoryName = dics.ToArray();
+                    return;
+                }
+                // Match path
+                url = generator_path.Matches(path);
+                if (url.Count == 0)
+                    throw new FormatException("Can not understand path.");
+            }
+            
+            // Write url path
+            for (var i = 0; i < url.Count; i++)
+            {
+                var dir = url[i].Groups["dirName"].Value;
+                if (string.IsNullOrEmpty(dir))
+                    continue;
+                if (string.IsNullOrWhiteSpace(dir))
+                    throw new FormatException("Directory name can not be blank!");
+
+                // Flag of a file
+                if (dir.Contains("."))
+                {
+                    // Not at the last item in path : error
+                    if (i != url.Count - 1)
+                        throw new FormatException("Directory name should not have a dot(.).");
                     
                     // Match file name
                     var f = generator_fileName.Match(dir);
                     if (f.Success)
                     {
-                        // Not at the last item in path : error
-                        if (i != p.Count - 1)
-                            throw new Exception("Format invalid");
 
                         FileName = f.Groups["fileName"].Value;
                         FileType = f.Groups["fileType"].Value;
+                        // Type is essential for a file.
+                        if (string.IsNullOrEmpty(FileType))
+                            throw new FormatException("File must have a type at lease.");
+                        break;
                     }
-                    else
-                    {
-                        dics.Add(dir);
-                    }
-                }
-            }
-            else
-            {
-                if (path != "/")
-                {
-                    // Match path
-                    var p = generator_path.Matches(path);
-                    if (p.Count == 0)
-                        throw new Exception("Invalid Format");
                     
-                    for (var i = 0; i < p.Count; i++)
-                    {
-                        var dir = p[i].Groups["dirName"].Value;
-                    
-                        // Match file name
-                        var f = generator_fileName.Match(dir);
-                        if (f.Success)
-                        {
-                            // Not at the last item in path : error
-                            if (i != p.Count - 1)
-                                throw new Exception("Format invalid");
-
-                            FileName = f.Groups["fileName"].Value.Trim();
-                            FileType = f.Groups["fileType"].Value.Trim();
-                            if (string.IsNullOrEmpty(FileName))
-                                throw new Exception("Format invalid");
-                        }
-                        else
-                        {
-                            dics.Add(dir);
-                        }
-                    }
+                    throw new FormatException("File type may include blank.");
                 }
+                
+                dics.Add(dir);
             }
                 
             DirectoryName = dics.ToArray();
@@ -130,13 +128,13 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
         {
             
             if (parent.Equals(default))
-                throw new NullReferenceException(nameof(parent));
+                throw new ArgumentNullException(nameof(parent));
 
             if (string.IsNullOrEmpty(location))
-                throw new NullReferenceException(nameof(location));
+                throw new ArgumentNullException(nameof(location));
 
             if (string.IsNullOrEmpty(parent.FileType))
-                throw new InvalidOperationException("Parent is a file, not a directory!");
+                throw new InvalidOperationException("Parent should be a directory, not a file!");
 
             _cachedShortPath = _cachedFullPath = "";
             FileName = FileType = "";
@@ -160,7 +158,8 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
 
                     FileName = f.Groups["fileName"].Value.Trim();
                     FileType = f.Groups["fileType"].Value.Trim();
-                    if (string.IsNullOrEmpty(FileName))
+                    // Type is essential for a file.
+                    if (string.IsNullOrEmpty(FileType))
                         throw new Exception("Format invalid");
                 }
                 else
@@ -226,16 +225,22 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             {
                 var builder = new StringBuilder();
             
+                bool w = false;
                 foreach (var s in DirectoryName)
                 {
+                    w = true;
                     builder.Append($"/{s}");
                 }
 
                 if (!String.IsNullOrWhiteSpace(FileType))
                 {
+                    w = true;
                     builder.Append($"/{FileName}.{FileType}");
                 }
 
+                if (!w)
+                    builder.Append("/");
+                
                 _cachedShortPath = builder.ToString();
             }
             
@@ -248,17 +253,23 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             if (string.IsNullOrEmpty(_cachedFullPath))
             {
                 var builder = new StringBuilder();
-                builder.Append($"{ContainerName}://");
-            
+                builder.Append($"{ContainerName}:/");
+
+                bool w = false;
                 foreach (var s in DirectoryName)
                 {
+                    w = true;
                     builder.Append($"/{s}");
                 }
 
                 if (!String.IsNullOrWhiteSpace(FileType))
                 {
+                    w = true;
                     builder.Append($"/{FileName}.{FileType}");
                 }
+
+                if (!w)
+                    builder.Append("/");
 
                 _cachedFullPath = builder.ToString();
             }
