@@ -138,34 +138,44 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
 
             _cachedShortPath = _cachedFullPath = "";
             FileName = FileType = "";
-            
-            var p = generator_path.Matches(location);
-            if (p.Count == 0)
+
+            var url = generator_path.Matches($"/{location}");
+            if (url.Count == 0)
                 throw new Exception("Invalid Format");
                     
             var dics = new List<string>(parent.DirectoryName);
-            for (var i = 0; i < p.Count; i++)
+            for (var i = 0; i < url.Count; i++)
             {
-                var dir = p[i].Groups["dirName"].Value;
+                var dir = url[i].Groups["dirName"].Value;
+                if (string.IsNullOrEmpty(dir))
+                    continue;
+                if (string.IsNullOrWhiteSpace(dir))
+                    throw new FormatException("Directory name can not be blank!");
 
-                // Match file name
-                var f = generator_fileName.Match(dir);
-                if (f.Success)
+                // Flag of a file
+                if (dir.Contains("."))
                 {
                     // Not at the last item in path : error
-                    if (i != p.Count - 1)
-                        throw new Exception("Format invalid");
+                    if (i != url.Count - 1)
+                        throw new FormatException("Directory name should not have a dot(.).");
+                    
+                    // Match file name
+                    var f = generator_fileName.Match(dir);
+                    if (f.Success)
+                    {
 
-                    FileName = f.Groups["fileName"].Value.Trim();
-                    FileType = f.Groups["fileType"].Value.Trim();
-                    // Type is essential for a file.
-                    if (string.IsNullOrEmpty(FileType))
-                        throw new Exception("Format invalid");
+                        FileName = f.Groups["fileName"].Value;
+                        FileType = f.Groups["fileType"].Value;
+                        // Type is essential for a file.
+                        if (string.IsNullOrEmpty(FileType))
+                            throw new FormatException("File must have a type at lease.");
+                        break;
+                    }
+                    
+                    throw new FormatException("File type may include blank.");
                 }
-                else
-                {
-                    dics.Add(dir);
-                }
+                
+                dics.Add(dir);
             }
 
             ContainerName = parent.ContainerName;
@@ -215,6 +225,8 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
         /// <param name="relatePath">The relative path from this path.</param>
         public FSPath NavToward(string relatePath)
         {
+            if (IsFilePath)
+                throw new InvalidOperationException("File can not contain a directory or file!");
             return new FSPath(this, relatePath);
         }
         
