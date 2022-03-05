@@ -30,8 +30,8 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
 
             // Init
             ContainerName = "current";
-            DirectoryName = Array.Empty<string>();
-            FileName = FileType = "";
+            DirectoryVector = Array.Empty<string>();
+            FileIdentify = FileType = "";
             _cachedShortPath = _cachedFullPath = "";
             
             var container = generator_container.Match(path);
@@ -53,7 +53,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             {
                 if (path == "/")
                 {
-                    DirectoryName = dics.ToArray();
+                    DirectoryVector = dics.ToArray();
                     return;
                 }
                 // Match path
@@ -83,7 +83,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
                     if (f.Success)
                     {
 
-                        FileName = f.Groups["fileName"].Value;
+                        FileIdentify = f.Groups["fileName"].Value;
                         FileType = f.Groups["fileType"].Value;
                         // Type is essential for a file.
                         if (string.IsNullOrEmpty(FileType))
@@ -97,7 +97,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
                 dics.Add(dir);
             }
                 
-            DirectoryName = dics.ToArray();
+            DirectoryVector = dics.ToArray();
         }
 
         private FSPath(FSPath child, int previous)
@@ -111,17 +111,17 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             if (!string.IsNullOrEmpty(child.FileType))
                 previous -= 1;
 
-            FileName = FileType = "";
+            FileIdentify = FileType = "";
             _cachedShortPath = _cachedFullPath = "";
             ContainerName = child.ContainerName;
             
             List<string> ary = new List<string>();
-            for (var i = 0; i < child.DirectoryName.Length - previous; i++)
+            for (var i = 0; i < child.DirectoryVector.Length - previous; i++)
             {
-                ary.Add(child.DirectoryName[i]);
+                ary.Add(child.DirectoryVector[i]);
             }
 
-            DirectoryName = ary.ToArray();
+            DirectoryVector = ary.ToArray();
         }
 
         private FSPath(FSPath parent, string location)
@@ -137,13 +137,13 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
                 throw new InvalidOperationException("Parent should be a directory, not a file!");
 
             _cachedShortPath = _cachedFullPath = "";
-            FileName = FileType = "";
+            FileIdentify = FileType = "";
 
             var url = generator_path.Matches($"/{location}");
             if (url.Count == 0)
                 throw new Exception("Invalid Format");
                     
-            var dics = new List<string>(parent.DirectoryName);
+            var dics = new List<string>(parent.DirectoryVector);
             for (var i = 0; i < url.Count; i++)
             {
                 var dir = url[i].Groups["dirName"].Value;
@@ -164,7 +164,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
                     if (f.Success)
                     {
 
-                        FileName = f.Groups["fileName"].Value;
+                        FileIdentify = f.Groups["fileName"].Value;
                         FileType = f.Groups["fileType"].Value;
                         // Type is essential for a file.
                         if (string.IsNullOrEmpty(FileType))
@@ -179,33 +179,58 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             }
 
             ContainerName = parent.ContainerName;
-            DirectoryName = dics.ToArray();
+            DirectoryVector = dics.ToArray();
         }
         
         /// <summary>
         /// The container of this path.
         /// </summary>
-        public string ContainerName { get; }
+        public string ContainerName { get; private set; }
         
         /// <summary>
         /// The directory relation of this path.
         /// </summary>
-        public string[] DirectoryName { get; }
+        public string[] DirectoryVector { get; }
+
+        /// <summary>
+        /// The directory name of this path
+        /// </summary>
+        public string DirectoryName
+        {
+            get
+            {
+                if (DirectoryVector.Length == 0)
+                    return ContainerName;
+
+                return DirectoryVector[DirectoryVector.Length - 1];
+            }
+        }
+
+        /// <summary>
+        /// Is this path's container is "current".
+        /// </summary>
+        public bool IsFloating => ContainerName == "current";
         
         /// <summary>
         /// Is this path pointing to a file?
         /// </summary>
         public bool IsFilePath => !string.IsNullOrEmpty(FileType);
-        
+
         /// <summary>
         /// The name of the file this path pointing to.
         /// </summary>
-        public string FileName { get; }
+        public string FileName => $"{FileIdentify}.{FileType}";
+        
+        /// <summary>
+        /// The identify of the file this path pointing to.
+        /// </summary>
+        public string FileIdentify { get; }
         
         /// <summary>
         /// The type of the file this path pointing to.
         /// </summary>
         public string FileType { get; }
+
 
         private string _cachedShortPath;
         private string _cachedFullPath;
@@ -214,7 +239,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
         /// Backward path from this path.
         /// </summary>
         /// <param name="distance">The distance want to back.</param>
-        public FSPath NavBackward(int distance)
+        public readonly FSPath NavBackward(int distance)
         {
             return new FSPath(this, distance);
         }
@@ -223,11 +248,29 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
         /// Toward path from this path.
         /// </summary>
         /// <param name="relatePath">The relative path from this path.</param>
-        public FSPath NavToward(string relatePath)
+        public readonly FSPath NavToward(string relatePath)
         {
             if (IsFilePath)
                 throw new InvalidOperationException("File can not contain a directory or file!");
             return new FSPath(this, relatePath);
+        }
+
+        /// <summary>
+        /// Using a correct container to clean floating status
+        /// </summary>
+        /// <param name="container">The new container name.</param>
+        public FSPath CleanFloating(string container)
+        {
+            if (string.IsNullOrWhiteSpace(container))
+                throw new ArgumentNullException(nameof(container));
+
+            if (container == "current")
+                throw new ArgumentException(nameof(container));
+            
+            if (ContainerName == "current")
+                ContainerName = container;
+
+            return this;
         }
         
         public string ShortPath()
@@ -238,7 +281,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
                 var builder = new StringBuilder();
             
                 bool w = false;
-                foreach (var s in DirectoryName)
+                foreach (var s in DirectoryVector)
                 {
                     w = true;
                     builder.Append($"/{s}");
@@ -247,7 +290,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
                 if (!String.IsNullOrWhiteSpace(FileType))
                 {
                     w = true;
-                    builder.Append($"/{FileName}.{FileType}");
+                    builder.Append($"/{FileIdentify}.{FileType}");
                 }
 
                 if (!w)
@@ -268,7 +311,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
                 builder.Append($"{ContainerName}:/");
 
                 bool w = false;
-                foreach (var s in DirectoryName)
+                foreach (var s in DirectoryVector)
                 {
                     w = true;
                     builder.Append($"/{s}");
@@ -277,7 +320,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
                 if (!String.IsNullOrWhiteSpace(FileType))
                 {
                     w = true;
-                    builder.Append($"/{FileName}.{FileType}");
+                    builder.Append($"/{FileIdentify}.{FileType}");
                 }
 
                 if (!w)
@@ -296,8 +339,8 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             unchecked
             {
                 var HashCode = ContainerName.GetHashCode();
-                HashCode = (HashCode * 397) ^ DirectoryName.GetHashCode();
-                HashCode = (HashCode * 397) ^ FileName.GetHashCode();
+                HashCode = (HashCode * 397) ^ DirectoryVector.GetHashCode();
+                HashCode = (HashCode * 397) ^ FileIdentify.GetHashCode();
                 HashCode = (HashCode * 397) ^ FileType.GetHashCode();
                 return HashCode;
             }
@@ -323,13 +366,13 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
         public bool Equals(FSPath obj)
         {
             if (obj.ContainerName == ContainerName && 
-                obj.FileName == FileName && 
+                obj.FileIdentify == FileIdentify && 
                 obj.FileType == FileType &&
-                obj.DirectoryName.Length == DirectoryName.Length)
+                obj.DirectoryVector.Length == DirectoryVector.Length)
             {
-                for (int i = 0; i < DirectoryName.Length; i++)
+                for (int i = 0; i < DirectoryVector.Length; i++)
                 {
-                    if (obj.DirectoryName[i] != DirectoryName[i])
+                    if (obj.DirectoryVector[i] != DirectoryVector[i])
                         return false;
                 }
 
