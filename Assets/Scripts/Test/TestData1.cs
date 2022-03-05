@@ -1,7 +1,7 @@
 using xyz.ca2didi.Unity.JsonDataManager.FS;
 using xyz.ca2didi.Unity.JsonDataManager.Interface;
 
-[JsonTypeBinder("Test1")]
+[JsonTypeDefine(typeof(TestData1),"Test1")]
 public class TestData1 : BaseData
 {
     public override bool Invalid()
@@ -10,7 +10,7 @@ public class TestData1 : BaseData
     }
 }
 
-[JsonTypeBinder("Test2")]
+[JsonTypeDefine(typeof(TestData2),"Test2")]
 public class TestData2 : BaseData
 {
     public override bool Invalid()

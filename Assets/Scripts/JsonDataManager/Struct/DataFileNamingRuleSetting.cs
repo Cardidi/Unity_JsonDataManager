@@ -16,19 +16,11 @@ namespace xyz.ca2didi.Unity.JsonDataManager.Struct
 
         public string GenerateDataFileName(uint id)
             => $"{Prefix}{id.ToString()}{Postfix}.{FileType}";
-
         
-        public string MatchGlobalDataFileID(string path)
-        {
-            var regex = new Regex($"({UniverseFileName}.{FileType}$)");
-            var match = regex.Match(path);
-
-            return match.Value;
-        }
         
         public int MatchDataFileID(string path)
         {
-            var regex = new Regex($"{Prefix}(\\d){Postfix}.{FileType}$");
+            var regex = new Regex($"{Prefix}(\\d)+{Postfix}.{FileType}$");
             var match = regex.Match(path).Captures;
             if (match.Count <= 0)
                 return -1;
