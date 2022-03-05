@@ -1,13 +1,15 @@
 using System;
+using System.Reflection;
 using Newtonsoft.Json.Linq;
-using xyz.ca2didi.Unity.JsonDataManager.Interface;
 
 namespace xyz.ca2didi.Unity.JsonDataManager.FS
 {
+
     public class DataFile
     {
         #region GlobalMethods
 
+ 
         public static DataFile GetFile(FSPath path)
         {
             DataManager.SafetyStartChecker();
@@ -52,7 +54,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
         public readonly DataFolder Parent;
         public bool IsRemoved { get; internal set; }
 
-        private readonly object _jsonTransitLock = new object();
+        protected readonly object _jsonTransitLock = new object();
         internal readonly DataTypeBinder TypeBinder;
         internal bool IsDirty { get; set; }
 
@@ -123,9 +125,9 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
              * 
              */
             var jRootObj = new JObject();
-            jRootObj.Add(new JProperty("type", TypeBinder.JsonElement));
             jEmpty = new JProperty("empty", true);
             jData = new JProperty("data");
+            jRootObj.Add(new JProperty("type", TypeBinder.JsonElement));
             jRootObj.Add(jEmpty);
             jRootObj.Add(jData);
             jProperty = new JProperty($"{Path.FileName}", jRootObj);
@@ -143,7 +145,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
                 throw new Exception();
         }
 
-        private JObject ToJObj()
+        protected JObject ToJObj()
         {
             lock (_jsonTransitLock)
             {
@@ -161,7 +163,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             }
         }
 
-        private BaseData ToData()
+        protected BaseData ToData()
         {
             lock (_jsonTransitLock)
             {
@@ -215,7 +217,9 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
         {
             DataManager.SafetyStartChecker();
             RemovedCheck();
-            return _obj;
+            
+            lock (_jsonTransitLock)
+                return _obj;
         }
 
         public void Write(T obj)
@@ -223,19 +227,13 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             DataManager.SafetyStartChecker();
             RemovedCheck();
             
-            if (obj == null)
-            {
-                jEmpty.Value = new JValue(false);
-                jData.RemoveAll();
-                _origin = null;
-                return;
-            }
-            
             if (obj.Invalid())
                 throw new ArgumentException("New data is not valid!");
             
             IsDirty = true;
-            _obj = obj;
+            lock (_jsonTransitLock)
+                _obj = obj;
+            ToJObj();
         }
     }
 }

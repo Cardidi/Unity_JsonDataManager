@@ -8,21 +8,6 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
     {
         #region GlobalMethods
         
-        internal static DataFolder CreateRootFolder(FSPath rootPath, out JObject jObject)
-        {
-            DataManager.SafetyStartChecker();
-            FSCheck(rootPath);
-            
-            return new DataFolder(rootPath, out jObject);
-        }
-        
-        internal static DataFolder CreateRootFolder(FSPath rootPath, JObject jObject)
-        {
-            DataManager.SafetyStartChecker();
-            FSCheck(rootPath);
-            
-            return new DataFolder(rootPath, jObject);
-        }
         
         public static DataFolder GetFolder(FSPath path)
         {
@@ -106,7 +91,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
         }
 
         // Create Empty Root Folder
-        private DataFolder(FSPath rootPath, out JObject jObject)
+        internal DataFolder(FSPath rootPath, out JObject jObject)
         {
             DataManager.SafetyStartChecker();
 
@@ -130,7 +115,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
         }
         
         // Create Root Folder from existed data.
-        private DataFolder(FSPath rootPath, JObject jObject)
+        internal DataFolder(FSPath rootPath, JObject jObject)
         {
             DataManager.SafetyStartChecker();
 
@@ -182,14 +167,14 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
                 }
             }
         }
-        
-        protected void RemovedCheck()
+
+        private void RemovedCheck()
         {
             if (IsRemoved)
                 throw new InvalidOperationException("Folder was removed! You can not operate it again.");
         }
 
-        protected static void FSCheck(FSPath path)
+        private static void FSCheck(FSPath path)
         {
             if (path.IsFilePath)
                 throw new Exception();

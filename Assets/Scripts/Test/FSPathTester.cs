@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Linq;
 using UnityEngine;
 using xyz.ca2didi.Unity.JsonDataManager.FS;
-using xyz.ca2didi.Unity.JsonDataManager.Interface;
 using Debug = UnityEngine.Debug;
 
 namespace xyz.ca2didi.Unity.Test
@@ -15,10 +14,12 @@ namespace xyz.ca2didi.Unity.Test
         private void OnEnable()
         {
             var watch = Stopwatch.StartNew();
+            FSPath fs;
             for (int i = 0; i < 1000; i++)
             {
-                var fs = new FSPath(URL);
+                fs = new FSPath(URL);
             }
+            Debug.Log(fs);
             Debug.Log(watch.ElapsedMilliseconds);
             //Debug.Log(new FSPath(URL));
         }

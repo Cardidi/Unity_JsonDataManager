@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace xyz.ca2didi.Unity.JsonDataManager.Interface
+namespace xyz.ca2didi.Unity.JsonDataManager
 {
     public abstract class BaseData
     {

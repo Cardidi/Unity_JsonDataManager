@@ -3,7 +3,7 @@ using JetBrains.Annotations;
 using Newtonsoft.Json;
 using UnityEngine;
 using xyz.ca2didi.Unity.JsonDataManager.FS;
-using xyz.ca2didi.Unity.JsonDataManager.Struct;
+using xyz.ca2didi.Unity.JsonDataManager.Settings;
 
 namespace xyz.ca2didi.Unity.JsonDataManager
 {
@@ -17,7 +17,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager
 
         public static void SafetyStartChecker()
         {
-            if (!DataManager.IsEnabled)
+            if (!IsEnabled)
                 throw new InvalidOperationException("You must enable DataManager first to using Json Data FS.");
         }
 

@@ -1,5 +1,5 @@
+using xyz.ca2didi.Unity.JsonDataManager;
 using xyz.ca2didi.Unity.JsonDataManager.FS;
-using xyz.ca2didi.Unity.JsonDataManager.Interface;
 
 [JsonTypeDefine(typeof(TestData1),"Test1")]
 public class TestData1 : BaseData

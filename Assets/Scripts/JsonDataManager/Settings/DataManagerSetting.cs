@@ -1,7 +1,7 @@
 using Newtonsoft.Json;
 using UnityEngine;
 
-namespace xyz.ca2didi.Unity.JsonDataManager.Struct
+namespace xyz.ca2didi.Unity.JsonDataManager.Settings
 {
     public class DataManagerSetting
     {
@@ -10,6 +10,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.Struct
 
         public int MaxGameDataCount = -1;
         public bool EnableStaticContainer = true;
+        public bool GenerateAllDataFSInStartup = true;
         public bool ApplyFileChangeToJsonInRealtime = true;
         public bool ApplyJsonChangeToDiskInRealtime = false;
 

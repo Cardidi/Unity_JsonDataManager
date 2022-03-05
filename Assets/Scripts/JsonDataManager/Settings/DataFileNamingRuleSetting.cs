@@ -1,8 +1,7 @@
 using System;
 using System.Text.RegularExpressions;
-using JetBrains.Annotations;
 
-namespace xyz.ca2didi.Unity.JsonDataManager.Struct
+namespace xyz.ca2didi.Unity.JsonDataManager.Settings
 {
     public class DataFileNamingRuleSetting
     {
