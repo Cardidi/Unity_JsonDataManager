@@ -1,11 +1,9 @@
-using System;
 using System.Diagnostics;
-using System.Linq;
 using UnityEngine;
 using xyz.ca2didi.Unity.JsonDataManager.FS;
 using Debug = UnityEngine.Debug;
 
-namespace xyz.ca2didi.Unity.Test
+namespace Test
 {
     public class FSPathTester : MonoBehaviour
     {

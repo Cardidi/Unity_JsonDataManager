@@ -17,6 +17,10 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             generator_path = new Regex(@"\G/(?<dirName>[\w\d\-_\.\s]*)"),
             generator_fileName = new Regex(@"^(?<fileName>[\w\d\s-_\.]*)\.(?<fileType>[\w\d]*)$");
         
+        public static readonly FSPath StaticContainerFSPathRoot = new FSPath("static://");
+        public static readonly FSPath CurrentContainerFSPathRoot = new FSPath("current://");
+
+        
         /// <summary>
         /// Create a new FSPath by path string (Full or short)
         /// </summary>

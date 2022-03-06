@@ -14,7 +14,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             DataManager.SafetyStartChecker();
             FSCheck(path);
             
-            var folder = DataManager.Instance.Container.TranslateContainer(path);
+            var folder = DataManager.Instance.Container.GetRootFolder(path);
             foreach (var vec in path.DirectoryVector)
             {
                 folder = folder.GetChildFolder(vec);
@@ -30,7 +30,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             DataManager.SafetyStartChecker();
             FSCheck(path);
             
-            var folder = DataManager.Instance.Container.TranslateContainer(path);
+            var folder = DataManager.Instance.Container.GetRootFolder(path);
             foreach (var vec in path.DirectoryVector)
             {
                 folder = folder.CreateOrGetChildFolder(vec);
@@ -44,7 +44,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             DataManager.SafetyStartChecker();
             FSCheck(path);
             
-            var folder = DataManager.Instance.Container.TranslateContainer(path);
+            var folder = DataManager.Instance.Container.GetRootFolder(path);
             foreach (var vec in path.DirectoryVector)
             {
                 folder = folder.GetChildFolder(vec);

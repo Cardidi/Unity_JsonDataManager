@@ -1,20 +1,22 @@
 using xyz.ca2didi.Unity.JsonDataManager;
-using xyz.ca2didi.Unity.JsonDataManager.FS;
 
-[JsonTypeDefine(typeof(TestData1),"Test1")]
-public class TestData1 : BaseData
+namespace Test
 {
-    public override bool Invalid()
+    [JsonTypeDefine(typeof(TestData1),"Test1")]
+    public class TestData1 : BaseData
     {
-        throw new System.NotImplementedException();
+        public override bool Invalid()
+        {
+            throw new System.NotImplementedException();
+        }
     }
-}
 
-[JsonTypeDefine(typeof(TestData2),"Test2")]
-public class TestData2 : BaseData
-{
-    public override bool Invalid()
+    [JsonTypeDefine(typeof(TestData2),"Test2")]
+    public class TestData2 : BaseData
     {
-        throw new System.NotImplementedException();
+        public override bool Invalid()
+        {
+            throw new System.NotImplementedException();
+        }
     }
 }

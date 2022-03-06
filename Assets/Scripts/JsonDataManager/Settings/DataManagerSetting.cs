@@ -8,11 +8,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.Settings
         public string GameRootDirectoryPath = Application.persistentDataPath;
         public string GameDataRelativeDirectoryPath = "\\Save";
 
-        public int MaxGameDataCount = -1;
-        public bool EnableStaticContainer = true;
-        public bool GenerateAllDataFSInStartup = true;
-        public bool ApplyFileChangeToJsonInRealtime = true;
-        public bool ApplyJsonChangeToDiskInRealtime = false;
+        public int MaxGameDataCount = 0;
 
         public DataFileNamingRuleSetting DataFileNamingRule = new DataFileNamingRuleSetting();
         public JsonSerializerSettings SerializerSettings = new JsonSerializerSettings();

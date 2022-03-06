@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using UnityEngine;
@@ -61,9 +62,9 @@ namespace xyz.ca2didi.Unity.JsonDataManager
             return this;
         }
 
-        private DataManager SetSpecificConverters([NotNull] params JsonConverter[] converters)
+        private DataManager AddSpecificConverters([NotNull] params JsonConverter[] converters)
         {
-            customConverters = converters;
+            customConverters.AddRange(converters);
             return this;
         }
 
@@ -71,6 +72,11 @@ namespace xyz.ca2didi.Unity.JsonDataManager
         {
             try
             {
+                foreach (var cvt in customConverters)
+                {
+                    serializer.Converters.Add(cvt);
+                }
+
                 OnEnable();
             }
             catch (Exception e)
@@ -90,11 +96,11 @@ namespace xyz.ca2didi.Unity.JsonDataManager
             return this;
         }
         
-        public static void Stop()
+        public void Stop()
         {
             try
             {
-                Instance.OnDisable();
+                OnDisable();
             }
             catch (Exception e)
             {
@@ -120,18 +126,19 @@ namespace xyz.ca2didi.Unity.JsonDataManager
         
         internal readonly DataManagerSetting setting;
         internal readonly JsonSerializer serializer;
-        internal JsonConverter[] customConverters;
+        internal List<JsonConverter> customConverters;
 
         public DataContainer Container => _container;
         public bool DevelopmentMode { get; private set; }
-        public string RootDirectoryPath => setting.GameRootDirectoryPath;
-        public string DataDirectoryPath => $"{setting.GameRootDirectoryPath}{setting.GameDataRelativeDirectoryPath}";
-        public int MaxDataCount => setting.MaxGameDataCount;
 
         #endregion
 
-        protected void OnEnable()
-        {}
+        protected async void OnEnable()
+        {
+            _container = new DataContainer();
+            await _container.ScanBinders();
+            await _container.ScanJsonFile();
+        }
         
         protected void OnDisable()
         {}
