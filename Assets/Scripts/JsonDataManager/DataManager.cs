@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using UnityEngine;
@@ -16,7 +17,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager
 
         public static bool IsEnabled => Instance != null;
 
-        public static void SafetyStartChecker()
+        internal static void SafetyStartChecker()
         {
             if (!IsEnabled)
                 throw new InvalidOperationException("You must enable DataManager first to using Json Data FS.");
@@ -46,41 +47,46 @@ namespace xyz.ca2didi.Unity.JsonDataManager
             // Creation method here
             this.setting = setting;
             serializer = JsonSerializer.Create(setting.SerializerSettings);
+            customConverters = new List<JsonConverter>();
             DevelopmentMode = false;
         }
 
-        private DataManager SetErrorHandle([NotNull] Action<Exception> handle)
+        public DataManager SetErrorHandle([NotNull] Action<Exception> handle)
         {
             _errorHandle = handle;
             return this;
         }
         
 
-        private DataManager SetDevelopment(bool dev = true)
+        public DataManager SetDevelopment(bool dev = true)
         {
             DevelopmentMode = dev;
             return this;
         }
 
-        private DataManager AddSpecificConverters([NotNull] params JsonConverter[] converters)
+        public DataManager AddSpecificConverters([NotNull] params JsonConverter[] converters)
         {
             customConverters.AddRange(converters);
             return this;
         }
 
-        private DataManager Commit()
+        public DataManager CommitAsync()
         {
+            Instance = this;
             try
             {
                 foreach (var cvt in customConverters)
                 {
                     serializer.Converters.Add(cvt);
                 }
-
-                OnEnable();
+                
+                _container = new DataContainer();
+                _container.ScanBinders();
+                _container.ScanJsonFile();
             }
             catch (Exception e)
             {
+                Instance = null;
                 if (_errorHandle != null)
                 {
                     _errorHandle(e);
@@ -92,7 +98,6 @@ namespace xyz.ca2didi.Unity.JsonDataManager
                 }
             }
 
-            Instance = this;
             return this;
         }
         
@@ -100,7 +105,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager
         {
             try
             {
-                OnDisable();
+                
             }
             catch (Exception e)
             {
@@ -126,21 +131,12 @@ namespace xyz.ca2didi.Unity.JsonDataManager
         
         internal readonly DataManagerSetting setting;
         internal readonly JsonSerializer serializer;
-        internal List<JsonConverter> customConverters;
+        private readonly List<JsonConverter> customConverters;
 
         public DataContainer Container => _container;
         public bool DevelopmentMode { get; private set; }
 
         #endregion
-
-        protected async void OnEnable()
-        {
-            _container = new DataContainer();
-            await _container.ScanBinders();
-            await _container.ScanJsonFile();
-        }
         
-        protected void OnDisable()
-        {}
     }
 }

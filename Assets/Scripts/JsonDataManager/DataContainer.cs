@@ -110,16 +110,14 @@ namespace xyz.ca2didi.Unity.JsonDataManager
             DataManager.SafetyStartChecker();
             DeleteSafetyChecker();
             
-            if (jFS.HasValues)
+            if (jFS.Value.Type != JTokenType.Null)
             {
                 return new ContainerTicket(
                     IsStatic ? FSPath.StaticContainerFSPathRoot : FSPath.CurrentContainerFSPathRoot,
                     (JObject) jFS.Value);
             }
-            else
-            {
-                return new ContainerTicket(IsStatic ? FSPath.StaticContainerFSPathRoot : FSPath.CurrentContainerFSPathRoot);
-            }
+            
+            return new ContainerTicket(IsStatic ? FSPath.StaticContainerFSPathRoot : FSPath.CurrentContainerFSPathRoot);
         }
 
         private FileInfo fInf;
@@ -139,6 +137,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager
             fInf = info;
             if (fInf.Exists)
             {
+                CreateInternal();
                 ReadInternal(fInf.OpenRead());
             }
             else
@@ -163,10 +162,10 @@ namespace xyz.ca2didi.Unity.JsonDataManager
                 fInf = null;
                 
                 jRoot.RemoveAll();
-                jDescript.RemoveAll();
-                jCreateTime.RemoveAll();
-                jSaveTime.RemoveAll();
-                jFS.RemoveAll();
+                jDescript.Value = JValue.CreateNull();
+                jCreateTime.Value = JValue.CreateNull();
+                jSaveTime.Value = JValue.CreateNull();
+                jFS.Value = JValue.CreateNull();
                 
                 jRoot = null;
                 jDescript = null;
@@ -187,16 +186,16 @@ namespace xyz.ca2didi.Unity.JsonDataManager
             lock (_fsOpeLocker)
             {
                 jRoot = new JObject();
-                jDescript = new JProperty("Description");
+                jDescript = new JProperty("Description", JValue.CreateNull());
                 jRoot.Add(jDescript);
                 
-                jCreateTime = new JProperty("CreateTime");
+                jCreateTime = new JProperty("CreateTime", JValue.CreateNull());
                 jRoot.Add(jCreateTime);
                 
-                jSaveTime = new JProperty("SaveTime");
+                jSaveTime = new JProperty("SaveTime", JValue.CreateNull());
                 jRoot.Add(jSaveTime);
                 
-                jFS = new JProperty("FS");
+                jFS = new JProperty("FS", JValue.CreateNull());
                 jRoot.Add(jFS);
             }
         }
@@ -205,10 +204,10 @@ namespace xyz.ca2didi.Unity.JsonDataManager
         {
             lock (_fsOpeLocker)
             {
-                jDescript.RemoveAll();
-                jCreateTime.RemoveAll();
-                jSaveTime.RemoveAll();
-                jFS.RemoveAll();
+                jDescript.Value = JValue.CreateNull();
+                jCreateTime.Value = JValue.CreateNull();
+                jSaveTime.Value = JValue.CreateNull();
+                jFS.Value = JValue.CreateNull();
                 
                 jDescript.Value = new JValue(Description);
                 jCreateTime.Value = new JValue(CreateTime);
@@ -224,23 +223,33 @@ namespace xyz.ca2didi.Unity.JsonDataManager
                 lock (_fsOpeLocker)
                 {
                     var json = reader.ReadToEnd();
+                    var ser = DataManager.Instance.serializer;
                     jRoot = JObject.Parse(json);
-                    
-                    jDescript.RemoveAll();
-                    jCreateTime.RemoveAll();
-                    jSaveTime.RemoveAll();
-                    jFS.RemoveAll();
-                        
-                    jDescript.Value = ((JProperty) jRoot["Description"]).Value;
-                    Description = jDescript.Value<string>();
-                        
-                    jSaveTime.Value = ((JProperty) jRoot["SaveTime"]).Value;
-                    SaveTime = jSaveTime.Value<DateTime>();
-                        
-                    jCreateTime.Value = ((JProperty) jRoot["CreateTime"]).Value;
-                    CreateTime = jCreateTime.Value<DateTime>();
-                        
-                    jFS.Value = ((JProperty) jRoot["FS"]).Value;
+
+                    var jDes = jRoot["Description"];
+                    if (jDes != null)
+                    {
+                        jDescript.Value = jDes;
+                        Description = jDescript.Value.ToObject<string>(ser);
+                    }
+
+                    var jST = jRoot["SaveTime"];
+                    if (jST != null)
+                    {
+                        jSaveTime.Value = jST;
+                        SaveTime = jSaveTime.Value.ToObject<DateTime>(ser);
+                    }
+
+                    var jCT = jRoot["CreateTime"];
+                    if (jCT != null)
+                    {
+                        jCreateTime.Value = jCT;
+                        CreateTime = jCreateTime.Value.ToObject<DateTime>(ser);
+                    }
+
+                    var jF = jRoot["FS"];
+                    if (jF != null)
+                        jFS.Value = jF;
                 }
             }
         }
@@ -366,7 +375,13 @@ namespace xyz.ca2didi.Unity.JsonDataManager
                 return _staticContainer.Root;
 
             if (path.ContainerName == "current")
-                return _currentContainer?.Root;
+            {
+                if (_currentContainer == null)
+                    throw new InvalidOperationException(
+                        "You must set a container or create a new container to access current://");
+                
+                return _currentContainer.Root;
+            }
 
             throw new ArgumentOutOfRangeException(nameof(path));
         }
@@ -379,6 +394,17 @@ namespace xyz.ca2didi.Unity.JsonDataManager
         private List<DiskTicket> _diskTicket;
         private DiskTicket _staticDiskTicket;
         private HashSet<int> _usedNum;
+        
+
+        /// <summary>
+        /// A shortcut to write static data.
+        /// </summary>
+        public void WriteStatic()
+        {
+            DataManager.SafetyStartChecker();
+            
+            _staticDiskTicket.Write(_staticContainer);
+        }
 
         /// <summary>
         /// Create a new disk ticket to save container.
@@ -423,9 +449,9 @@ namespace xyz.ca2didi.Unity.JsonDataManager
             return _staticDiskTicket;
         }
 
-        public Task ScanJsonFile()
+        internal void ScanJsonFile()
         {
-            DataManager.SafetyStartChecker();
+            //DataManager.SafetyStartChecker();
             
             DiskTicket stct = null;
             var ts = new List<DiskTicket>();
@@ -433,72 +459,72 @@ namespace xyz.ca2didi.Unity.JsonDataManager
             var path = $"{setting.GameRootDirectoryPath}{setting.GameDataRelativeDirectoryPath}";
             var gdFileName = setting.DataFileNamingRule.GenerateGlobalDataFileName();
             var nums = new HashSet<int>();
-
-            return Task.Run(() =>
+            
+            // If root directory is existed
+            if (Directory.Exists(path))
             {
-                // If root directory is existed
-                if (Directory.Exists(path))
-                {
-                    var rootDir = new DirectoryInfo(path);
+                var rootDir = new DirectoryInfo(path);
 
-                    // Scan json file in this directory
-                    foreach (var inf in rootDir.GetFiles())
+                // Scan json file in this directory
+                foreach (var inf in rootDir.GetFiles())
+                { 
+                    int id = setting.DataFileNamingRule.MatchDataFileID(inf.Name); 
+                    if (id >= 0)
                     {
-                        int id = setting.DataFileNamingRule.MatchDataFileID(inf.Name);
-                        if (id >= 0)
-                        {
-                            nums.Add(id);
-                            var ticket = new DiskTicket(id, inf);
-                            ts.Add(ticket);
-                        }
-                        else if (inf.Name == gdFileName)
-                        {
-                            if (stct == null)
-                                stct = new DiskTicket(-1, inf);
-                            else
-                                throw new Exception();
-                        }
+                        nums.Add(id);
+                        var ticket = new DiskTicket(id, inf);
+                        ts.Add(ticket);
                     }
-
-                    // If no static json: create it
-                    if (stct == null)
+                    else if (inf.Name == gdFileName)
                     {
-                        stct = new DiskTicket(
-                            -1, 
-                            new FileInfo($"{path}/{setting.DataFileNamingRule.GenerateGlobalDataFileName()}"));
+                        if (stct == null)
+                            stct = new DiskTicket(-1, inf);
+                        else
+                            throw new Exception();
                     }
-
                 }
-                else
+
+                // If no static json: create it
+                if (stct == null)
                 {
-                    Directory.CreateDirectory(path);  
                     stct = new DiskTicket(
                         -1, 
                         new FileInfo($"{path}/{setting.DataFileNamingRule.GenerateGlobalDataFileName()}"));
                 }
-                
-                lock (_diskLocker)
+
+            }
+            else
+            {
+                Directory.CreateDirectory(path); 
+                stct = new DiskTicket(
+                    -1, 
+                    new FileInfo($"{path}/{setting.DataFileNamingRule.GenerateGlobalDataFileName()}"));
+ 
+            }
+            
+            lock (_diskLocker)
+            {
+ 
+                _staticDiskTicket?.Dispose();
+                _staticDiskTicket = stct;
+                _staticContainer?.Dispose();
+                _staticContainer = stct.Construct();
+
+                _currentContainer?.Dispose();
+                _currentContainer = null;
+
+                if (_diskTicket != null)
                 {
-                    _staticDiskTicket?.Dispose();
-                    _staticDiskTicket = stct;
-                    _staticContainer.Dispose();
-                    _staticContainer = stct.Construct();
-                    
-                    _currentContainer?.Dispose();
-                    _currentContainer = null;
-                    
-                    if (_diskTicket != null)
-                    {
-                        foreach (var t in _diskTicket)
-                            t.Dispose();
-                        _diskTicket.Clear();
-                    }
-                    _diskTicket = ts;
-                    
-                    _usedNum?.Clear();
-                    _usedNum = nums;
+                    foreach (var t in _diskTicket)
+                        t.Dispose();
+                    _diskTicket.Clear();
                 }
-            });
+                _diskTicket = ts;
+                
+                _usedNum?.Clear();
+                _usedNum = nums;
+            }
+            
         }
 
         private void DiskScanSafetyChecker()
@@ -515,42 +541,38 @@ namespace xyz.ca2didi.Unity.JsonDataManager
         private List<DataTypeBinder> binder;
         private Hashtable typeStrMap;
 
-        public Task ScanBinders()
+        internal void ScanBinders()
         {
-            DataManager.SafetyStartChecker();
 
-            return Task.Run(() =>
+            var bid = new List<DataTypeBinder>();
+            var map = new Hashtable();
+
+            var typDef = new List<JsonTypeDefine>();
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
             {
-                var bid = new List<DataTypeBinder>();
-                var map = new Hashtable();
+                var def = Array.FindAll(asm.GetCustomAttributes(typeof(JsonTypeDefine), false),
+                    o => o is JsonTypeDefine) as JsonTypeDefine[];
+                if (def == null)
+                    continue;
 
-                var typDef = new List<JsonTypeDefine>();
-                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-                {
-                    var def = Array.FindAll(asm.GetCustomAttributes(typeof(JsonTypeDefine), false),
-                        o => o is JsonTypeDefine) as JsonTypeDefine[];
-                    if (def == null)
-                        continue;
-
-                    typDef.AddRange(def);
-                }
+                typDef.AddRange(def);
+            }
                 
-                for (var i = 0; i < typDef.Count; i++)
-                {
-                    var item = new DataTypeBinder(typDef[i]);
-                    bid.Add(item);
-                    map.Add(item.JsonElement, i);
-                }
+            for (var i = 0; i < typDef.Count; i++)
+            {
+                var item = new DataTypeBinder(typDef[i]);
+                bid.Add(item);
+                map.Add(item.JsonElement, i);
+            }
 
-                lock (_typeBinderLocker)
-                {
-                    binder?.Clear();
-                    binder = bid;
+            lock (_typeBinderLocker)
+            {
+                binder?.Clear();
+                binder = bid;
                     
-                    typeStrMap?.Clear();
-                    typeStrMap = map;
-                }
-            });
+                typeStrMap?.Clear();
+                typeStrMap = map;
+            }
         }
         
         public DataTypeBinder GetBinder(string typeStr)

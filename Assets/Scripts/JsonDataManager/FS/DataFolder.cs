@@ -67,13 +67,13 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
         private class DataFolderJsonBridge
         {
             internal readonly JObject JThis;
-            internal readonly JArray SubFolders, Files;
+            internal readonly JObject SubFolders, Files;
 
             internal DataFolderJsonBridge()
             {
                 JThis = new JObject();
-                SubFolders = new JArray();
-                Files = new JArray();
+                SubFolders = new JObject();
+                Files = new JObject();
                 
                 JThis.Add("folders", SubFolders);
                 JThis.Add("files", Files);
@@ -83,8 +83,8 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             {
                 JThis = jThis;
 
-                SubFolders = (jThis["folders"] as JProperty)?.Value as JArray;
-                Files =  (jThis["files"] as JProperty)?.Value as JArray;
+                SubFolders = jThis["folders"] as JObject;
+                Files = jThis["files"] as JObject;
                 if (SubFolders == null || Files == null)
                     throw new Exception();
             }
@@ -145,25 +145,15 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             lock (_fileExecuteLock)
             {
                 // Update Folders
-                foreach (var jToken in _bridge.SubFolders)
+                foreach (var jToken in _bridge.SubFolders.Properties())
                 {
-                    if (jToken.Type != JTokenType.Property)
-                        throw new Exception();
-
-                    var folderProp = jToken as JProperty;
-
-                    _folders.Add(new DataFolder(this, folderProp.Name, folderProp.Value as JObject));
+                    _folders.Add(new DataFolder(this, jToken.Name, (JObject) jToken.Value));
                 }
                 
                 // Update Files
-                foreach (var jToken in _bridge.Files)
+                foreach (var jToken in _bridge.Files.Properties())
                 {
-                    if (jToken.Type != JTokenType.Property)
-                        throw new Exception();
-
-                    var fileProp = jToken as JProperty;
-                    
-                    _files.Add(new DataFile(fileProp, this));
+                    _files.Add(new DataFile(jToken, this));
                 }
             }
         }
@@ -238,7 +228,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
 
                 var file = _files[idx];
                 _files.RemoveAt(idx);
-                _bridge.Files.Remove(_bridge.Files[file.FileName]);
+                _bridge.Files.Remove(file.FileName);
                 file.IsDirty = false;
                 file.IsRemoved = true;
 
@@ -333,7 +323,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
 
                 var folder = _folders[idx];
                 _folders.RemoveAt(idx);
-                _bridge.SubFolders.Remove(_bridge.SubFolders[folder.FolderName]);
+                _bridge.SubFolders.Remove(folder.FolderName);
                 
                 folder.DeleteAllChildFiles();
                 folder.DeleteAllChildFolders();

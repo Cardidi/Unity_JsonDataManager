@@ -137,7 +137,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             if (string.IsNullOrEmpty(location))
                 throw new ArgumentNullException(nameof(location));
 
-            if (string.IsNullOrEmpty(parent.FileType))
+            if (parent.IsFilePath)
                 throw new InvalidOperationException("Parent should be a directory, not a file!");
 
             _cachedShortPath = _cachedFullPath = "";

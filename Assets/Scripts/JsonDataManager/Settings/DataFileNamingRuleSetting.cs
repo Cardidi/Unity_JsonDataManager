@@ -19,12 +19,12 @@ namespace xyz.ca2didi.Unity.JsonDataManager.Settings
         
         public int MatchDataFileID(string path)
         {
-            var regex = new Regex($"{Prefix}(\\d)+{Postfix}.{FileType}$");
-            var match = regex.Match(path).Captures;
-            if (match.Count <= 0)
+            var regex = new Regex($"^{Prefix}(\\d)+{Postfix}.{FileType}$");
+            var match = regex.Match(path);
+            if (!match.Success)
                 return -1;
 
-            return Int32.Parse(match[0].Value);
+            return Int32.Parse(match.Groups[1].Value);
         }
     }
 }
