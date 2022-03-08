@@ -229,7 +229,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
                 var file = _files[idx];
                 _files.RemoveAt(idx);
                 _bridge.Files.Remove(file.FileName);
-                file.IsDirty = false;
+                //file.IsDirty = false;
                 file.IsRemoved = true;
 
                 return true;
@@ -246,7 +246,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
                 _bridge.Files.RemoveAll();
                 foreach (var file in _files)
                 {
-                    file.IsDirty = false;
+                    //file.IsDirty = false;
                     file.IsRemoved = true;
                 }
 

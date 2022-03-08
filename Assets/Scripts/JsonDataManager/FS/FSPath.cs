@@ -243,7 +243,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
         /// Backward path from this path.
         /// </summary>
         /// <param name="distance">The distance want to back.</param>
-        public readonly FSPath NavBackward(int distance)
+        public readonly FSPath NavBackward(int distance = 1)
         {
             return new FSPath(this, distance);
         }

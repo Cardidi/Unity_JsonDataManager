@@ -137,7 +137,6 @@ namespace xyz.ca2didi.Unity.JsonDataManager
             fInf = info;
             if (fInf.Exists)
             {
-                CreateInternal();
                 ReadInternal(fInf.OpenRead());
             }
             else
@@ -229,27 +228,27 @@ namespace xyz.ca2didi.Unity.JsonDataManager
                     var jDes = jRoot["Description"];
                     if (jDes != null)
                     {
-                        jDescript.Value = jDes;
+                        jDescript = (JProperty) jDes.Parent;
                         Description = jDescript.Value.ToObject<string>(ser);
                     }
 
                     var jST = jRoot["SaveTime"];
                     if (jST != null)
                     {
-                        jSaveTime.Value = jST;
+                        jSaveTime = (JProperty) jST.Parent;
                         SaveTime = jSaveTime.Value.ToObject<DateTime>(ser);
                     }
 
                     var jCT = jRoot["CreateTime"];
                     if (jCT != null)
                     {
-                        jCreateTime.Value = jCT;
+                        jCreateTime = (JProperty) jCT.Parent;
                         CreateTime = jCreateTime.Value.ToObject<DateTime>(ser);
                     }
 
                     var jF = jRoot["FS"];
                     if (jF != null)
-                        jFS.Value = jF;
+                        jFS = (JProperty) jF.Parent;
                 }
             }
         }
@@ -549,13 +548,13 @@ namespace xyz.ca2didi.Unity.JsonDataManager
 
             var typDef = new List<JsonTypeDefine>();
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            foreach (var type in asm.GetTypes())
             {
-                var def = Array.FindAll(asm.GetCustomAttributes(typeof(JsonTypeDefine), false),
-                    o => o is JsonTypeDefine) as JsonTypeDefine[];
-                if (def == null)
+                var attr = type.GetCustomAttributes(typeof(JsonTypeDefine), false) as JsonTypeDefine[];
+                if (attr == null && attr.Length == 0)
                     continue;
-
-                typDef.AddRange(def);
+                
+                typDef.AddRange(attr);
             }
                 
             for (var i = 0; i < typDef.Count; i++)

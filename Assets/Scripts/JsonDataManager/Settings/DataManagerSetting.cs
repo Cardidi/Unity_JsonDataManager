@@ -6,7 +6,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.Settings
     public class DataManagerSetting
     {
         public string GameRootDirectoryPath = Application.persistentDataPath;
-        public string GameDataRelativeDirectoryPath = "\\Save";
+        public string GameDataRelativeDirectoryPath = "/Save";
 
         public int MaxGameDataCount = 0;
 

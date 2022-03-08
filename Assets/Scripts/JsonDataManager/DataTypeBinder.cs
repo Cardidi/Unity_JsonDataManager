@@ -5,7 +5,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager
 {
     public class DataTypeBinder
     {
-        public Type ActualType => Define.CorType;
+        public System.Type ActualType => Define.CorType;
         public string JsonElement => Define.JsonElementTag;
         private readonly JsonTypeDefine Define;
         

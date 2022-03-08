@@ -2,10 +2,9 @@ using System;
 
 namespace xyz.ca2didi.Unity.JsonDataManager
 {
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = true, Inherited = false)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = true)]
     public class JsonTypeDefine : Attribute
     {
-        private static readonly Type baseType = typeof(BaseData);
 
         public readonly Type CorType;
         public readonly string JsonElementTag;
@@ -14,10 +13,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager
         {
             if (typ == null && !typ.IsAbstract && !typ.IsInterface)
                 throw new ArgumentException($"{nameof(typ)} is not a non-abstract class type!");
-            
-            if (typ.IsSubclassOf(baseType))
-                throw new ArgumentException($"{nameof(typ)} is a subclass of BaseData!");
-            
+
             // if (!typ.IsSerializable)
             //     throw new ArgumentException($"{nameof(typ)} is not a serializable class type!");
             
