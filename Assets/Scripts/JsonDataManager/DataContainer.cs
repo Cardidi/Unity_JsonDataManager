@@ -40,8 +40,8 @@ namespace xyz.ca2didi.Unity.JsonDataManager
 
         internal void Dispose()
         {
-            Root.DeleteAllChildFiles();
-            Root.DeleteAllChildFolders();
+            Root.DeleteAllFiles();
+            Root.DeleteAllFolders();
             
             FSObject = null;
             RootPath = default;
@@ -113,11 +113,11 @@ namespace xyz.ca2didi.Unity.JsonDataManager
             if (jFS.Value.Type != JTokenType.Null)
             {
                 return new ContainerTicket(
-                    IsStatic ? FSPath.StaticContainerFSPathRoot : FSPath.CurrentContainerFSPathRoot,
+                    IsStatic ? FSPath.StaticPathRoot : FSPath.CurrentPathRoot,
                     (JObject) jFS.Value);
             }
             
-            return new ContainerTicket(IsStatic ? FSPath.StaticContainerFSPathRoot : FSPath.CurrentContainerFSPathRoot);
+            return new ContainerTicket(IsStatic ? FSPath.StaticPathRoot : FSPath.CurrentPathRoot);
         }
 
         private FileInfo fInf;
@@ -316,7 +316,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager
             lock (_diskLocker)
             {
                 _currentContainer?.Dispose();
-                _currentContainer = new ContainerTicket(FSPath.CurrentContainerFSPathRoot);
+                _currentContainer = new ContainerTicket(FSPath.CurrentPathRoot);
                 return _currentContainer;
             }
         }
@@ -574,6 +574,10 @@ namespace xyz.ca2didi.Unity.JsonDataManager
             }
         }
         
+        /// <summary>
+        /// Find a binder via it's type string.
+        /// </summary>
+        /// <returns>If not exist, return null.</returns>
         public DataTypeBinder GetBinder(string typeStr)
         {
             DataManager.SafetyStartChecker();
@@ -581,11 +585,57 @@ namespace xyz.ca2didi.Unity.JsonDataManager
 
             lock (_typeBinderLocker)
             {
-                if (binder == null)
-                    throw new InvalidOperationException("You must scan binder first!");
-
                 var idx = typeStrMap[typeStr];
                 return (idx is int) ? binder[(int) idx] : null;
+            }
+        }
+
+        /// <summary>
+        /// Add type binder in runtime
+        /// </summary>
+        /// <param name="typ">Type</param>
+        /// <param name="typeStr">Type string</param>
+        /// <returns>If string is invalid, return null</returns>
+        public DataTypeBinder AddBinder(Type typ, string typeStr)
+        {
+            DataManager.SafetyStartChecker();
+            BinderScanChecker();
+
+            typeStr = typeStr.Trim();
+            if (string.IsNullOrEmpty(typeStr))
+                return null;
+
+            lock (_typeBinderLocker)
+            {
+                if (typeStrMap.Contains(typeStr))
+                    return null;
+
+                var idx = binder.FindIndex(m => m.ActualType == typ);
+                if (idx < 0)
+                {
+                    var b = new DataTypeBinder(new JsonTypeDefine(typ, typeStr));
+                    typeStrMap.Add(typeStr, binder.Count);
+                    binder.Add(b);
+
+                    return b;
+                }
+                
+                typeStrMap.Add(typeStr, idx);
+                return binder[idx];
+            }
+        }
+        
+        public DataTypeBinder[] GetBinders(Predicate<DataTypeBinder> match = null)
+        {            
+            DataManager.SafetyStartChecker();
+            BinderScanChecker();
+
+            lock (_typeBinderLocker)
+            {
+                if (match == null)
+                    return binder.ToArray();
+
+                return binder.FindAll(match).ToArray();
             }
         }
 

@@ -9,7 +9,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
         #region GlobalMethods
         
         
-        public static DataFolder GetFolder(FSPath path)
+        public static DataFolder Get(FSPath path)
         {
             DataManager.SafetyStartChecker();
             FSCheck(path);
@@ -17,7 +17,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             var folder = DataManager.Instance.Container.GetRootFolder(path);
             foreach (var vec in path.DirectoryVector)
             {
-                folder = folder.GetChildFolder(vec);
+                folder = folder.GetFolder(vec);
                 if (folder == null)
                     return null;
             }
@@ -25,7 +25,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             return folder;
         }
 
-        public static DataFolder CreateOrGetFolder(FSPath path)
+        public static DataFolder CreateOrGet(FSPath path)
         {
             DataManager.SafetyStartChecker();
             FSCheck(path);
@@ -33,13 +33,13 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             var folder = DataManager.Instance.Container.GetRootFolder(path);
             foreach (var vec in path.DirectoryVector)
             {
-                folder = folder.CreateOrGetChildFolder(vec);
+                folder = folder.CreateOrGetFolder(vec);
             }
 
             return folder;
         }
         
-        public static bool ExistsFolder(FSPath path)
+        public static bool Exists(FSPath path)
         {
             DataManager.SafetyStartChecker();
             FSCheck(path);
@@ -47,7 +47,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             var folder = DataManager.Instance.Container.GetRootFolder(path);
             foreach (var vec in path.DirectoryVector)
             {
-                folder = folder.GetChildFolder(vec);
+                folder = folder.GetFolder(vec);
                 if (folder == null)
                     return false;
             }
@@ -109,7 +109,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
 
             IsRemoved = false;
             Parent = parent;
-            Path = parent.Path.NavToward($"/{folderName}");
+            Path = parent.Path.Forward($"/{folderName}");
             _bridge = new DataFolderJsonBridge();
             jObject = _bridge.JThis;
         }
@@ -134,7 +134,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
 
             IsRemoved = false;
             Parent = parent;
-            Path = parent.Path.NavToward($"/{folderName}");
+            Path = parent.Path.Forward($"/{folderName}");
             _bridge = new DataFolderJsonBridge(jObject);
             
             updateData();
@@ -185,7 +185,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
 
         #region FileOperation
 
-        public DataFile CreateOrGetChildFile(string typeStr, string identify = "")
+        public DataFile CreateOrGetFile(string typeStr, string identify = "")
         {
             DataManager.SafetyStartChecker();
             RemovedCheck();
@@ -204,7 +204,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             }
         }
 
-        public bool ExistsChildFile(string typeStr, string identify)
+        public bool ExistsFile(string typeStr, string identify)
         {
             DataManager.SafetyStartChecker();
             RemovedCheck();
@@ -215,7 +215,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             }
         }
         
-        public bool DeleteChildFile(string identify, string typeStr)
+        public bool DeleteFile(string identify, string typeStr)
         {            
             DataManager.SafetyStartChecker();
             RemovedCheck();
@@ -236,7 +236,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             }
         }
         
-        public void DeleteAllChildFiles()
+        public void DeleteAllFiles()
         {            
             DataManager.SafetyStartChecker();
             RemovedCheck();
@@ -255,7 +255,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             
         }
         
-        public DataFile GetChildFile(string identify, string typeStr)
+        public DataFile GetFile(string identify, string typeStr)
         {
             DataManager.SafetyStartChecker();
             RemovedCheck();
@@ -264,7 +264,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
                 return _files.Find(m => m.Path.FileIdentify == identify && m.Path.FileType == typeStr);
         }
         
-        public DataFile[] GetChildFiles(Predicate<DataFile> match)
+        public DataFile[] GetFiles(Predicate<DataFile> match)
         {
             DataManager.SafetyStartChecker();
             RemovedCheck();
@@ -273,7 +273,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
                 return _files.FindAll(match).ToArray();
         }
         
-        public DataFile[] GetChildFiles()
+        public DataFile[] GetFiles()
         {
             DataManager.SafetyStartChecker();
             RemovedCheck();
@@ -286,7 +286,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
 
         #region FolderOperation
 
-        public DataFolder CreateOrGetChildFolder(string name)
+        public DataFolder CreateOrGetFolder(string name)
         {
             DataManager.SafetyStartChecker();
             RemovedCheck();
@@ -307,7 +307,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             }
         }
 
-        public bool DeleteChildFolder(string name)
+        public bool DeleteFolder(string name)
         {
             DataManager.SafetyStartChecker();
             RemovedCheck();
@@ -325,8 +325,8 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
                 _folders.RemoveAt(idx);
                 _bridge.SubFolders.Remove(folder.FolderName);
                 
-                folder.DeleteAllChildFiles();
-                folder.DeleteAllChildFolders();
+                folder.DeleteAllFiles();
+                folder.DeleteAllFolders();
 
                 folder.IsRemoved = true;
             }
@@ -334,7 +334,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             return true;
         }
 
-        public void DeleteAllChildFolders()
+        public void DeleteAllFolders()
         {
             DataManager.SafetyStartChecker();
             RemovedCheck();
@@ -344,8 +344,8 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
                 _bridge.SubFolders.RemoveAll();
                 foreach (var folder in _folders)
                 {
-                    folder.DeleteAllChildFiles();
-                    folder.DeleteAllChildFolders();
+                    folder.DeleteAllFiles();
+                    folder.DeleteAllFolders();
                     folder.IsRemoved = true;
                 }
 
@@ -354,7 +354,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
         }
         
 
-        public bool ExistsChildFolder(string name)
+        public bool ExistsFolder(string name)
         {
             DataManager.SafetyStartChecker();
             RemovedCheck();
@@ -367,7 +367,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
         }
         
         
-        public DataFolder GetChildFolder(string name)
+        public DataFolder GetFolder(string name)
         {
             DataManager.SafetyStartChecker();
             RemovedCheck();
@@ -379,7 +379,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
                 return _folders.Find(m => m.FolderName == name);
         }
 
-        public DataFolder[] GetChildFolders(Predicate<DataFolder> match)
+        public DataFolder[] GetFolders(Predicate<DataFolder> match)
         {
             DataManager.SafetyStartChecker();
             RemovedCheck();
@@ -389,7 +389,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
         }
 
 
-        public DataFolder[] GetChildFolders()
+        public DataFolder[] GetFolders()
         {
             DataManager.SafetyStartChecker();
             RemovedCheck();

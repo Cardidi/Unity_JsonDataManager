@@ -17,8 +17,8 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             generator_path = new Regex(@"\G/(?<dirName>[\w\d\-_\.\s]*)"),
             generator_fileName = new Regex(@"^(?<fileName>[\w\d\s-_\.]*)\.(?<fileType>[\w\d]*)$");
         
-        public static readonly FSPath StaticContainerFSPathRoot = new FSPath("static://");
-        public static readonly FSPath CurrentContainerFSPathRoot = new FSPath("current://");
+        public static readonly FSPath StaticPathRoot = new FSPath("static://");
+        public static readonly FSPath CurrentPathRoot = new FSPath("current://");
 
         
         /// <summary>
@@ -243,7 +243,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
         /// Backward path from this path.
         /// </summary>
         /// <param name="distance">The distance want to back.</param>
-        public readonly FSPath NavBackward(int distance = 1)
+        public readonly FSPath Backward(int distance = 1)
         {
             return new FSPath(this, distance);
         }
@@ -252,7 +252,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
         /// Toward path from this path.
         /// </summary>
         /// <param name="relatePath">The relative path from this path.</param>
-        public readonly FSPath NavToward(string relatePath)
+        public readonly FSPath Forward(string relatePath)
         {
             if (IsFilePath)
                 throw new InvalidOperationException("File can not contain a directory or file!");

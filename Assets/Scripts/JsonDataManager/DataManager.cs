@@ -4,11 +4,21 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using UnityEngine;
-using xyz.ca2didi.Unity.JsonDataManager.FS;
+using xyz.ca2didi.Unity.JsonDataManager.Json;
 using xyz.ca2didi.Unity.JsonDataManager.Settings;
 
 namespace xyz.ca2didi.Unity.JsonDataManager
 {
+    
+    // Type Definitions
+    [JsonTypeDefine(typeof(int), "int")]
+    [JsonTypeDefine(typeof(float), "float")]
+    [JsonTypeDefine(typeof(bool), "bool")]
+    [JsonTypeDefine(typeof(string), "str")]
+    [JsonTypeDefine(typeof(Vector2), "vec2")]
+    [JsonTypeDefine(typeof(Vector3), "vec3")]
+    [JsonTypeDefine(typeof(Vector4), "vec4")]
+    
     public class DataManager
     {
         #region StaticManagement
@@ -47,7 +57,12 @@ namespace xyz.ca2didi.Unity.JsonDataManager
             // Creation method here
             this.setting = setting;
             serializer = JsonSerializer.Create(setting.SerializerSettings);
-            customConverters = new List<JsonConverter>();
+            customConverters = new List<JsonConverter>
+            {
+                new Vector2Converter(),
+                new Vector3Converter(),
+                new Vector4Converter()
+            };
             DevelopmentMode = false;
         }
 
@@ -78,6 +93,11 @@ namespace xyz.ca2didi.Unity.JsonDataManager
                 foreach (var cvt in customConverters)
                 {
                     serializer.Converters.Add(cvt);
+                }
+
+                if (DevelopmentMode)
+                {
+                    setting.SerializerSettings.Formatting = Formatting.Indented;
                 }
                 
                 _container = new DataContainer();

@@ -9,36 +9,36 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
     {
         #region GlobalMethods
         
-        public static DataFile GetFile(FSPath path)
+        public static DataFile Get(FSPath path)
         {
             DataManager.SafetyStartChecker();
             FSCheck(path);
             
             if (path.IsFilePath)
-                return DataFolder.GetFolder(path.NavBackward())?.GetChildFile(path.FileIdentify, path.FileType);
+                return DataFolder.Get(path.Backward())?.GetFile(path.FileIdentify, path.FileType);
             throw new Exception();
         }
 
-        public static DataFile CreateOrGetFile(FSPath path)
+        public static DataFile CreateOrGet(FSPath path)
         {
             DataManager.SafetyStartChecker();
             FSCheck(path);
             
             if (path.IsFilePath)
-                return DataFolder.CreateOrGetFolder(path.NavBackward()).
-                    CreateOrGetChildFile(path.FileType, path.FileIdentify);
+                return DataFolder.CreateOrGet(path.Backward()).
+                    CreateOrGetFile(path.FileType, path.FileIdentify);
             throw new Exception();
         }
         
-        public static bool ExistsFile(FSPath path)
+        public static bool Exists(FSPath path)
         {
             DataManager.SafetyStartChecker();
             FSCheck(path);
             
             if (path.IsFilePath)
             {
-                var f = DataFolder.GetFolder(path.NavBackward());
-                return f == null ? false : f.ExistsChildFile(path.FileType, path.FileIdentify);
+                var f = DataFolder.Get(path.Backward());
+                return f?.ExistsFile(path.FileType, path.FileIdentify) ?? false;
             }
             throw new Exception();
             
@@ -78,7 +78,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             var fName = jProperty.Name;
             IsRemoved = false;
             Parent = parent;
-            Path = parent.Path.NavToward($"/{fName}");
+            Path = parent.Path.Forward($"/{fName}");
 
             var rootObj = jProperty.Value as JObject;
             var typeStr = ((JValue) rootObj["type"]).ToObject<string>(DataManager.Instance.serializer);
@@ -87,7 +87,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             if (TypeBinder == null)
                 throw new Exception();
             
-            jData = (JProperty) ((JValue) rootObj["data"]).Parent;
+            jData = (JProperty) rootObj["data"].Parent;
             jEmpty = (JValue) rootObj["empty"];
             
             JsonToObj();
@@ -108,7 +108,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             
             IsRemoved = false;
             Parent = parent;
-            Path = parent.Path.NavToward($"{identify}.{typeStr}");
+            Path = parent.Path.Forward($"{identify}.{typeStr}");
 
             /*
              * JSON structure
@@ -130,19 +130,19 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             jProperty = new JProperty($"{Path.FileName}", jRootObj);
         }
 
-        protected void RemovedCheck()
+        private void RemovedCheck()
         {
             if (IsRemoved)
                 throw new InvalidOperationException("File was removed! You can not operate it again.");
         }
 
-        protected static void FSCheck(FSPath path)
+        private static void FSCheck(FSPath path)
         {
             if (!path.IsFilePath)
                 throw new Exception();
         }
 
-        internal void Empty()
+        private void Empty()
         {
             lock (_jsonTransitLock)
             {
@@ -151,7 +151,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             }
         }
 
-        internal void ObjToJSon(object obj)
+        private void ObjToJson(object obj)
         {
             lock (_jsonTransitLock)
             {
@@ -160,7 +160,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             }
         }
 
-        internal object JsonToObj()
+        private object JsonToObj()
         {
             lock (_jsonTransitLock)
             {
@@ -171,17 +171,17 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
 
         #endregion
 
-        internal readonly object sharedRWLock = new object();
+        private readonly object sharedRWLock = new object();
 
-        public class DataFileOperator<T>
+        public class Operator<T>
         {
-            private DataFileOperator() {}
+            private Operator() {}
 
             public bool CanReadWrite => !File.IsRemoved;
             public bool IsEmpty => File.IsEmpty;
             public readonly DataFile File;
 
-            internal DataFileOperator(DataFile file)
+            internal Operator(DataFile file)
             {
                 File = file;
             }
@@ -210,7 +210,7 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
                     if (obj == null)
                         File.Empty();
                     
-                    File.ObjToJSon(obj);
+                    File.ObjToJson(obj);
                 }
             }
 
@@ -228,22 +228,34 @@ namespace xyz.ca2didi.Unity.JsonDataManager.FS
             
         }
 
-        public bool OperateAs<T>(out DataFileOperator<T> file)
+        /// <summary>
+        /// Use this data as a kind of type.
+        /// </summary>
+        /// <param name="opt">The data operator this call return.</param>
+        /// <param name="defaultValue">Default value give to this data if data is empty.</param>
+        /// <typeparam name="T">The type trying to convert to.</typeparam>
+        /// <returns>If data is empty, return false. This value will not be effect by defaultValue.</returns>
+        /// <exception cref="InvalidCastException">Type gived in T is not correct.</exception>
+        public bool As<T>(out Operator<T> opt, T defaultValue = default)
         {
             DataManager.SafetyStartChecker();
-            RemovedCheck();
 
             lock (_jsonTransitLock)
             {
-                
-                if (ObjectType == typeof(T))
-                {
-                    file = new DataFileOperator<T>(this);
-                    return file != null;
-                }
+                RemovedCheck();
 
-                file = null;
-                return false;
+                if (ObjectType != typeof(T)) throw new InvalidCastException();
+
+                var ept = !IsEmpty;
+                if (IsEmpty && defaultValue != null)
+                {
+                    jData.Value = JValue.FromObject(defaultValue, DataManager.Instance.serializer);
+                    jEmpty.Value = false;
+                }
+                
+                opt = new Operator<T>(this);
+                return ept;
+
             }
         }
     }
