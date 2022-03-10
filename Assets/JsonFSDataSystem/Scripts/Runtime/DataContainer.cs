@@ -5,9 +5,9 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
-using xyz.ca2didi.Unity.JsonDataManager.FS;
+using xyz.ca2didi.Unity.JsonFSDataSystem.FS;
 
-namespace xyz.ca2didi.Unity.JsonDataManager
+namespace xyz.ca2didi.Unity.JsonFSDataSystem
 {
 
     /// <summary>

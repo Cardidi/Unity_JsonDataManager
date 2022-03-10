@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using UnityEngine;
-using xyz.ca2didi.Unity.JsonDataManager.Json;
-using xyz.ca2didi.Unity.JsonDataManager.Settings;
+using xyz.ca2didi.Unity.JsonFSDataSystem.Json;
+using xyz.ca2didi.Unity.JsonFSDataSystem.Settings;
 
-namespace xyz.ca2didi.Unity.JsonDataManager
+namespace xyz.ca2didi.Unity.JsonFSDataSystem
 {
     
     // Type Definitions

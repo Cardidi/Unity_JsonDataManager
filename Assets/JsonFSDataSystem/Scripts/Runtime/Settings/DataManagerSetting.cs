@@ -2,7 +2,7 @@ using System;
 using Newtonsoft.Json;
 using UnityEngine;
 
-namespace xyz.ca2didi.Unity.JsonDataManager.Settings
+namespace xyz.ca2didi.Unity.JsonFSDataSystem.Settings
 {
     public class DataManagerSetting
     {

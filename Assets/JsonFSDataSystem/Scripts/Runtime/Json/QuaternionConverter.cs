@@ -3,7 +3,7 @@ using System.Numerics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace xyz.ca2didi.Unity.JsonDataManager.Json
+namespace xyz.ca2didi.Unity.JsonFSDataSystem.Json
 {
     public class QuaternionConverter : JsonConverter<Quaternion>
     {

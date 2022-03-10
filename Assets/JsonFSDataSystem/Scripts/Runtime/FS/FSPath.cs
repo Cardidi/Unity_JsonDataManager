@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace xyz.ca2didi.Unity.JsonDataManager.FS
+namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 {
     
     /// <summary>
