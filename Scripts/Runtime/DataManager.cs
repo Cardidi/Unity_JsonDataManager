@@ -32,6 +32,25 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                 throw new InvalidOperationException("You must enable DataManager first to using Json Data FS.");
         }
 
+        public static DataManager CreateNew([NotNull] DataManagerSetting setting, Action<Exception> err = null)
+        {
+            if (Instance != null)
+                throw new InvalidOperationException("DataManager has already booted.");
+
+            err ??= e => Debug.LogError(e);
+            var ins = new DataManager(setting, err);
+            return ins;
+        }
+        
+        public static DataManager CreateNew(Action<Exception> err = null)
+        {
+            if (Instance != null)
+                throw new InvalidOperationException("DataManager has already booted.");
+
+            err ??= e => Debug.LogError(e);
+            var ins = new DataManager(new DataManagerSetting(), err);
+            return ins;
+        }
         
         public static DataManager StartNew([NotNull] DataManagerSetting setting, Action<Exception> err = null)
         {
@@ -40,6 +59,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
 
             err ??= e => Debug.LogError(e);
             var ins = new DataManager(setting, err);
+            ins.BootContainer(err);
             return ins;
         }
 
@@ -50,6 +70,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
 
             err ??= e => Debug.LogError(e);
             var ins = new DataManager(new DataManagerSetting(), err);
+            ins.BootContainer(err);
             return ins;
         }
 
@@ -80,7 +101,10 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             {
                 setting.SerializerSettings.Formatting = Formatting.Indented;
             }
-            
+        }
+        
+        public void BootContainer(Action<Exception> err = null)
+        {            
             // Init container
             try
             {
@@ -91,8 +115,11 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             catch (Exception e)
             {
                 Instance = null;
+                if (err == null)
+                    throw e;
                 err.Invoke(e);
             }
+            
         }
 
         #endregion
