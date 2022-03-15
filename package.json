@@ -1,8 +1,8 @@
-﻿{
+{
   "name": "xyz.ca2didi.Unity.JsonFSDataSystem",
   "displayName": "Json FS Data System",
   "description": "Save your game data just like save file to your disk! Making data placed in a familiar way for developer and designer.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "unity": "2020.3",
   "license": "GNU GPLv3",
   "dependencies": {
