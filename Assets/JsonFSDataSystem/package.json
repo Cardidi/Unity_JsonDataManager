@@ -1,5 +1,5 @@
 {
-  "name": "xyz.ca2didi.Unity.JsonFSDataSystem",
+  "name": "xyz.ca2didi.unity.fsdatasystemjson",
   "displayName": "Json FS Data System",
   "description": "Save your game data just like save file to your disk! Making data placed in a familiar way for developer and designer.",
   "version": "0.1.1",
