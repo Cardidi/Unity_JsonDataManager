@@ -67,19 +67,15 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         public DateTime CreateTime { get; private set; }
         
         
-        public Task WriteAsync(ContainerTicket ticket, string description = "")
+        public async Task WriteAsync(ContainerTicket ticket, string description = "")
         {
-            DataManager.SafetyStartChecker();
-            DeleteSafetyChecker();
             
-            return Task.Run(() => Write(ticket, description));
-        }
-
-        public void Write(ContainerTicket ticket, string description = "")
-        {
-
             if (ticket == null)
                 throw new NullReferenceException($"{nameof(ticket)}");
+
+            DataManager.SafetyStartChecker();
+            DeleteSafetyChecker();
+            await DataManager.Instance.BeforeWriteDiskEvent();
 
             SaveTime = DateTime.UtcNow;
             Description = description;
@@ -308,7 +304,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         /// Create a new container and set it as current container.It will automatically dispose older current container.
         /// </summary>
         /// <returns>New container</returns>
-        public ContainerTicket NewContainer()
+        public async Task<ContainerTicket> NewContainerAsync()
         {
             DataManager.SafetyStartChecker();
             DiskScanSafetyChecker();
@@ -317,8 +313,10 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             {
                 _currentContainer?.Dispose();
                 _currentContainer = new ContainerTicket(FSPath.CurrentPathRoot);
-                return _currentContainer;
             }
+            
+            await DataManager.Instance.AfterReadDiskEvent();
+            return _currentContainer;
         }
 
         /// <summary>
@@ -327,7 +325,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         /// <param name="ticket">New container with data</param>
         /// <returns>If ticket is refer to a static or disposed container, it will return null.</returns>
         /// <exception cref="ArgumentNullException">If ticket is null, report it.</exception>
-        public ContainerTicket UseContainer(DiskTicket ticket)
+        public async Task<ContainerTicket> UseContainerAsync(DiskTicket ticket)
         {
             DataManager.SafetyStartChecker();
             DiskScanSafetyChecker();
@@ -341,8 +339,10 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             {
                 _currentContainer?.Dispose();
                 _currentContainer = ticket.Construct();
-                return _currentContainer;
             }
+            
+            await DataManager.Instance.AfterReadDiskEvent();
+            return _currentContainer;
         }
 
         /// <summary>
@@ -398,11 +398,11 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         /// <summary>
         /// A shortcut to write static data.
         /// </summary>
-        public void WriteStatic()
+        public async Task WriteStaticAsync()
         {
             DataManager.SafetyStartChecker();
             
-            _staticDiskTicket.Write(_staticContainer);
+            await _staticDiskTicket.WriteAsync(_staticContainer);
         }
 
         /// <summary>
