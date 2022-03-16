@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using UnityEngine;
@@ -52,27 +53,6 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             return ins;
         }
         
-        public static DataManager StartNew([NotNull] DataManagerSetting setting, Action<Exception> err = null)
-        {
-            if (Instance != null)
-                throw new InvalidOperationException("DataManager has already booted.");
-
-            err ??= e => Debug.LogError(e);
-            var ins = new DataManager(setting, err);
-            ins.BootContainer(err);
-            return ins;
-        }
-
-        public static DataManager StartNew(Action<Exception> err = null)
-        {
-            if (Instance != null)
-                throw new InvalidOperationException("DataManager has already booted.");
-
-            err ??= e => Debug.LogError(e);
-            var ins = new DataManager(new DataManagerSetting(), err);
-            ins.BootContainer(err);
-            return ins;
-        }
 
         private DataManager(DataManagerSetting setting, Action<Exception> err)
         {
@@ -103,7 +83,27 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             }
         }
         
-        public void BootContainer(Action<Exception> err = null)
+        public async Task<DataManager> BootContainerAsync(Action<Exception> err = null)
+        {            
+            // Init container
+            try
+            {
+                _container = new DataContainer();
+               await _container.ScanBinders();
+               await _container.ScanJsonFile();
+            }
+            catch (Exception e)
+            {
+                Instance = null;
+                if (err == null)
+                    throw e;
+                err.Invoke(e);
+            }
+
+            return this;
+        }
+        
+        public DataManager BootContainer(Action<Exception> err = null)
         {            
             // Init container
             try
@@ -119,12 +119,17 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                     throw e;
                 err.Invoke(e);
             }
-            
+
+            return this;
         }
 
         #endregion
 
         #region Settings
+
+        public Func<Task> BeforeWriteDiskEvent;
+        
+        public Func<Task> AfterReadDiskEvent;
 
         private Action<Exception> _errorHandle;
         private DataContainer _container;

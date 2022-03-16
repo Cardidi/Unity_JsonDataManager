@@ -448,7 +448,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             return _staticDiskTicket;
         }
 
-        internal void ScanJsonFile()
+        internal async Task ScanJsonFile()
         {
             //DataManager.SafetyStartChecker();
             
@@ -523,7 +523,8 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                 _usedNum?.Clear();
                 _usedNum = nums;
             }
-            
+
+            await Task.Yield();
         }
 
         private void DiskScanSafetyChecker()
@@ -540,7 +541,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         private List<DataTypeBinder> binder;
         private Hashtable typeStrMap;
 
-        internal void ScanBinders()
+        internal async Task ScanBinders()
         {
 
             var bid = new List<DataTypeBinder>();
@@ -572,6 +573,8 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                 typeStrMap?.Clear();
                 typeStrMap = map;
             }
+
+            await Task.Yield();
         }
         
         /// <summary>
