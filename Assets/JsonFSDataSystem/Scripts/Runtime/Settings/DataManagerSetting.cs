@@ -19,7 +19,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.Settings
         /// <summary>
         /// Custom json converter to (de)serialize types which is not support by Newtonsoft.Json
         /// </summary>
-        public JsonConverter[] CustomConverters;
+        public JsonConverter[] CustomConverters = new JsonConverter[]{};
         
         /// <summary>
         /// Enable json converters which specific designed for unity class.
