@@ -17,7 +17,7 @@ namespace xyz.ca2didi.Unity.Test
             }
             
             t.Write(new TestData(1, 2));
-            man.Container.WriteStatic();
+            man.Container.WriteStaticAsync();
         }
     }
 }
