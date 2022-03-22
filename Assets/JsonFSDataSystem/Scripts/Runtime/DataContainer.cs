@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
+using UnityEngine;
 using xyz.ca2didi.Unity.JsonFSDataSystem.FS;
 
 namespace xyz.ca2didi.Unity.JsonFSDataSystem
@@ -69,13 +70,23 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         
         public async Task WriteAsync(ContainerTicket ticket, string description = "")
         {
-            
             if (ticket == null)
                 throw new NullReferenceException($"{nameof(ticket)}");
-
             DataManager.SafetyStartChecker();
             DeleteSafetyChecker();
-            await DataManager.Instance.BeforeWriteDiskEvent();
+            
+            await Task.Yield();
+            foreach (var a in DataManager.Instance.BeforeWriteDiskEvent)
+            {
+                try
+                {
+                    a();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                }
+            }
 
             SaveTime = DateTime.UtcNow;
             Description = description;
@@ -315,7 +326,6 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                 _currentContainer = new ContainerTicket(FSPath.CurrentPathRoot);
             }
             
-            await DataManager.Instance.AfterReadDiskEvent();
             return _currentContainer;
         }
 
@@ -340,8 +350,20 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                 _currentContainer?.Dispose();
                 _currentContainer = ticket.Construct();
             }
-            
-            await DataManager.Instance.AfterReadDiskEvent();
+
+            await Task.Yield();
+            foreach (var a in DataManager.Instance.AfterReadDiskEvent)
+            {
+                try
+                {
+                    a();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                }
+            }
+
             return _currentContainer;
         }
 
