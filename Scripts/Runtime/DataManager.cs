@@ -127,9 +127,14 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
 
         #region Settings
 
-        public Func<Task> BeforeWriteDiskEvent;
+        public void AddBeforeWriteEvent(Action t) => BeforeWriteDiskEvent.Add(t);
+        public void AddAfterReadEvent(Action t) => AfterReadDiskEvent.Add(t);
+        public bool RemoveBeforeWriteEvent(Action t) => BeforeWriteDiskEvent.Remove(t);
+        public bool RemoveAfterReadEvent(Action t) => AfterReadDiskEvent.Remove(t);
         
-        public Func<Task> AfterReadDiskEvent;
+        internal List<Action> BeforeWriteDiskEvent = new List<Action>();
+        
+        internal List<Action> AfterReadDiskEvent = new List<Action>();
 
         private Action<Exception> _errorHandle;
         private DataContainer _container;
