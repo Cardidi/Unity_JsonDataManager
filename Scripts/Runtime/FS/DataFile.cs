@@ -1,9 +1,9 @@
 using System;
+using System.Runtime.CompilerServices;
 using Newtonsoft.Json.Linq;
 
 namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 {
-
     public class DataFile
     {
         #region GlobalMethods
@@ -62,7 +62,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         #region Runtime
 
         private JValue jEmpty { get; }
-        private JProperty jData { get; }
+        internal JProperty jData { get; }
         
         private DataFile(){}
         
