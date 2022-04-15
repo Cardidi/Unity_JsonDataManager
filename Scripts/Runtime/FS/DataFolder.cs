@@ -7,11 +7,10 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
     public class DataFolder
     {
         #region GlobalMethods
-        
-        
+
         public static DataFolder Get(FSPath path)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             FSCheck(path);
             
             var folder = DataManager.Instance.Container.GetRootFolder(path);
@@ -27,7 +26,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 
         public static DataFolder CreateOrGet(FSPath path)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             FSCheck(path);
             
             var folder = DataManager.Instance.Container.GetRootFolder(path);
@@ -41,7 +40,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         
         public static bool Exists(FSPath path)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             FSCheck(path);
             
             var folder = DataManager.Instance.Container.GetRootFolder(path);
@@ -93,36 +92,36 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         // Create Empty Root Folder
         internal DataFolder(FSPath rootPath, out JObject jObject)
         {
-            DataManager.SafetyStartChecker();
-
+            DataManager.StartChecker();
+            
+            _bridge = new DataFolderJsonBridge();
             IsRemoved = false;
             Parent = this;
             Path = rootPath;
-            _bridge = new DataFolderJsonBridge();
             jObject = _bridge.JThis;
         }
         
         // Create Empty Folder
         private DataFolder(DataFolder parent, string folderName, out JObject jObject)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
 
+            _bridge = new DataFolderJsonBridge();
             IsRemoved = false;
             Parent = parent;
             Path = parent.Path.Forward($"/{folderName}");
-            _bridge = new DataFolderJsonBridge();
             jObject = _bridge.JThis;
         }
         
         // Create Root Folder from existed data.
         internal DataFolder(FSPath rootPath, JObject jObject)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
 
+            _bridge = new DataFolderJsonBridge(jObject);
             IsRemoved = false;
             Parent = this;
             Path = rootPath;
-            _bridge = new DataFolderJsonBridge(jObject);
             
             updateData();
         }
@@ -130,12 +129,12 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         // Create Folder with Data filled
         private DataFolder(DataFolder parent, string folderName, JObject jObject)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
 
+            _bridge = new DataFolderJsonBridge(jObject);
             IsRemoved = false;
             Parent = parent;
             Path = parent.Path.Forward($"/{folderName}");
-            _bridge = new DataFolderJsonBridge(jObject);
             
             updateData();
         }
@@ -187,8 +186,10 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 
         public DataFile CreateOrGetFile(string typeStr, string identify = "")
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             RemovedCheck();
+            FSPath.NotFSPathStringException(typeStr, nameof(typeStr));
+            FSPath.NotFSPathStringException(identify, nameof(identify));
 
             lock (_fileExecuteLock)
             {
@@ -206,8 +207,10 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 
         public bool ExistsFile(string typeStr, string identify)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             RemovedCheck();
+            FSPath.NotFSPathStringException(typeStr, nameof(typeStr));
+            FSPath.NotFSPathStringException(identify, nameof(identify));
 
             lock (_fileExecuteLock)
             {
@@ -217,8 +220,10 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         
         public bool DeleteFile(string identify, string typeStr)
         {            
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             RemovedCheck();
+            FSPath.NotFSPathStringException(typeStr, nameof(typeStr));
+            FSPath.NotFSPathStringException(identify, nameof(identify));
 
             lock (_fileExecuteLock)
             {
@@ -229,8 +234,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
                 var file = _files[idx];
                 _files.RemoveAt(idx);
                 _bridge.Files.Remove(file.FileName);
-                //file.IsDirty = false;
-                file.IsRemoved = true;
+                file.Dropped();
 
                 return true;
             }
@@ -238,17 +242,14 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         
         public void DeleteAllFiles()
         {            
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             RemovedCheck();
 
             lock (_fileExecuteLock)
             {
                 _bridge.Files.RemoveAll();
                 foreach (var file in _files)
-                {
-                    //file.IsDirty = false;
-                    file.IsRemoved = true;
-                }
+                    file.Dropped();
 
                 _files.Clear();
             }
@@ -257,8 +258,10 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         
         public DataFile GetFile(string identify, string typeStr)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             RemovedCheck();
+            FSPath.NotFSPathStringException(typeStr, nameof(typeStr));
+            FSPath.NotFSPathStringException(identify, nameof(identify));
             
             lock (_fileExecuteLock)
                 return _files.Find(m => m.Path.FileIdentify == identify && m.Path.FileType == typeStr);
@@ -266,7 +269,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         
         public DataFile[] GetFiles(Predicate<DataFile> match)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             RemovedCheck();
             
             lock (_fileExecuteLock)
@@ -275,7 +278,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         
         public DataFile[] GetFiles()
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             RemovedCheck();
 
             lock (_fileExecuteLock)
@@ -288,8 +291,9 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 
         public DataFolder CreateOrGetFolder(string name)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             RemovedCheck();
+            FSPath.NotFSPathStringException(name, nameof(name));
 
             if (string.IsNullOrEmpty(name))
                 throw new Exception();
@@ -309,8 +313,9 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 
         public bool DeleteFolder(string name)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             RemovedCheck();
+            FSPath.NotFSPathStringException(name, nameof(name));
 
             if (string.IsNullOrWhiteSpace(name))
                 throw new Exception();
@@ -336,7 +341,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 
         public void DeleteAllFolders()
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             RemovedCheck();
 
             lock (_fileExecuteLock)
@@ -356,8 +361,9 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 
         public bool ExistsFolder(string name)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             RemovedCheck();
+            FSPath.NotFSPathStringException(name, nameof(name));
 
             if (string.IsNullOrWhiteSpace(name))
                 throw new Exception();
@@ -369,8 +375,9 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         
         public DataFolder GetFolder(string name)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             RemovedCheck();
+            FSPath.NotFSPathStringException(name, nameof(name));
 
             if (string.IsNullOrWhiteSpace(name))
                 throw new Exception();
@@ -381,7 +388,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 
         public DataFolder[] GetFolders(Predicate<DataFolder> match)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             RemovedCheck();
 
             lock (_fileExecuteLock)
@@ -391,7 +398,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 
         public DataFolder[] GetFolders()
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             RemovedCheck();
 
             lock (_fileExecuteLock)
