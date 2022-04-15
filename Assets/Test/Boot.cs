@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using xyz.ca2didi.Unity.JsonFSDataSystem;
 using xyz.ca2didi.Unity.JsonFSDataSystem.FS;
 
@@ -14,12 +15,19 @@ namespace xyz.ca2didi.Unity.Test
                 Debug.Log("After Read");
             });
             
-            await man.Container.UseContainerAsync(man.Container.GetAllDiskTickets()[0]);
-            
-            if (DataFile.CreateOrGet(FSPath.CurrentPathRoot.Forward("/.test")).As<TestData>(out var t))
+            if (DataFile.CreateOrGet(FSPath.StaticPathRoot.Forward("/.test")).As<TestData>(out var t))
             {
                 var d = t.Read();
                 Debug.Log($"{d.a}");
+            }
+
+            var f = DataFolder.CreateOrGet(FSPath.StaticPathRoot.Forward("/Test/hgsbugfnafnluajcrhavvnhmauhcruscpacocjhurscatvgbyu"));
+
+            f.CreateOrGetFolder("/Bucket");
+            for (int i = 0; i < 50; i++)
+            {
+                f.CreateOrGetFile("int", i.ToString()).As<int>(out var p);
+                p.Write(i);
             }
             
             t.Write(new TestData(1, 2));
@@ -28,7 +36,12 @@ namespace xyz.ca2didi.Unity.Test
                 Debug.Log("Before Write");
             });
 
-            await man.Container.CreateDiskTicket().WriteAsync(man.Container.CurrentContainer);
+            await man.Container.WriteStaticAsync();
+        }
+
+        private void OnDestroy()
+        {
+            DataManager.Instance.CloseContainer();
         }
     }
 }

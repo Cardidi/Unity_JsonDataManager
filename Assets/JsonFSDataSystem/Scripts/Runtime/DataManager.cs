@@ -14,7 +14,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
     [JsonTypeDefine(typeof(int), "int")]
     [JsonTypeDefine(typeof(float), "float")]
     [JsonTypeDefine(typeof(bool), "bool")]
-    [JsonTypeDefine(typeof(string), "str")]
+    [JsonTypeDefine(typeof(string), "string")]
     [JsonTypeDefine(typeof(Vector2), "vec2")]
     [JsonTypeDefine(typeof(Vector3), "vec3")]
     [JsonTypeDefine(typeof(Vector4), "vec4")]
@@ -81,6 +81,11 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             {
                 setting.SerializerSettings.Formatting = Formatting.Indented;
             }
+        }
+
+        public void CloseContainer()
+        {
+            Instance = null;
         }
         
         public async Task<DataManager> BootContainerAsync(Action<Exception> err = null)

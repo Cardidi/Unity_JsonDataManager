@@ -1,7 +1,9 @@
 {
-    "name": "JsonDataManager",
+    "name": "JsonDataManager.Editor",
     "rootNamespace": "xyz.ca2didi.Unity",
-    "references": [],
+    "references": [
+        "GUID:334341232976b43de9ffb3218aae96ec"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
