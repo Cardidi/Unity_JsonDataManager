@@ -37,7 +37,11 @@ namespace JsonFSDataSystem.Editor.Scripts.Inspector
         private void OnGUI()
         {
             if (!Application.isPlaying && DataManager.IsEnabled)
+            {
+                Debug.LogWarning(
+                    "DataManager was closed by Json Data Viewer. Please check if your code have not handle with DataManager closing call.");
                 DataManager.Instance.CloseContainerAsync();
+            }
             
             DrawToolbar();
             GUILayout.Space(2f);
