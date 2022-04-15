@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.IO;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using UnityEditor;
-using UnityEditor.EditorTools;
 using UnityEngine;
 using xyz.ca2didi.Unity.JsonFSDataSystem;
 using xyz.ca2didi.Unity.JsonFSDataSystem.FS;
@@ -35,32 +32,88 @@ namespace JsonFSDataSystem.Editor.Scripts.Inspector
             if (activeWindow == this) activeWindow = null;
         }
 
-        private string blankDataText = "(~)";
+        private string blankDataText = "~";
         
         private void OnGUI()
         {
-            EditorGUILayout.BeginHorizontal(GUILayout.ExpandWidth(false));
-            GUI.enabled = DataManager.IsEnabled;
-            if (GUILayout.Button("Nav To Static", GUILayout.ExpandWidth(false)))
-                currentFolder = DataFolder.Get(FSPath.StaticPathRoot);
-            GUI.enabled = DataManager.Instance != null && DataManager.Instance.Container.HasActiveCurrentContainer;
-            if (GUILayout.Button("Nav To Current", GUILayout.ExpandWidth(false)))
-                currentFolder = DataFolder.Get(FSPath.CurrentPathRoot);
-            GUI.enabled = true;
+            if (!Application.isPlaying && DataManager.IsEnabled)
+                DataManager.Instance.CloseContainerAsync();
             
-            EditorGUILayout.EndHorizontal();
+            DrawToolbar();
+            GUILayout.Space(2f);
             if (DataManager.IsEnabled)
             {
-                if (currentFolder == null)
+                if (currentFolder == null && DataManager.Instance.Container.StaticContainer != null)
                     currentFolder = DataManager.Instance.Container.StaticContainer.Root;
             }
             else
             {
                 currentFile = null;
                 currentFolder = null;
-                EditorGUILayout.HelpBox("You should enter \"Play Mode\" to see data.\nThere is nothing to show for you.", MessageType.Info);
+                EditorGUILayout.HelpBox("You should enter \"Play Mode\" with DataManager.StartNew() called to see data.\nThere is nothing to show for you.", MessageType.Info);
             }
             DrawBasicLayout();
+        }
+
+        private void DrawToolbar()
+        {
+            EditorGUILayout.BeginHorizontal(GUILayout.ExpandWidth(false));
+            GUI.enabled = DataManager.IsEnabled;
+            if (GUILayout.Button("Refresh", GUILayout.ExpandWidth(false)))
+            {
+                DataManager.Instance.StaticDirtyFileRegister?.Invoke();
+                DataManager.Instance.CurrentDirtyFileRegister?.Invoke();
+            }
+            if (GUILayout.Button("Open Static", GUILayout.ExpandWidth(false)))
+                currentFolder = DataFolder.Get(FSPath.StaticPathRoot);
+            GUI.enabled = DataManager.Instance != null && DataManager.Instance.Container.HasActiveCurrentContainer;
+            if (GUILayout.Button("Open Current", GUILayout.ExpandWidth(false)))
+                currentFolder = DataFolder.Get(FSPath.CurrentPathRoot);
+            GUI.enabled = !DataManager.IsEnabled;
+            
+            EditorGUILayout.BeginVertical(GUILayout.ExpandWidth(true));
+            var status = "Status: Disabled";
+            if (DataManager.Booting)
+                status = "Status: Booting...";
+            if (DataManager.IsEnabled)
+                status = "Status: Running";
+            EditorGUILayout.Space(2f);
+            EditorGUILayout.LabelField(new GUIContent(status, "Current running status of Data Manager"));
+            EditorGUILayout.EndVertical();
+            
+            if (GUILayout.Button(
+                    new GUIContent("Clean Folder", "Clean Save Data Folder.\n" + 
+                         "It only valid if you have not boot DataManger.\n" + 
+                         "It will only clean default data path.If you assign other path, it may not working for you"), 
+                    GUILayout.ExpandWidth(false)))
+            {
+                if (Directory.Exists(Application.persistentDataPath + "/Save"))
+                    Directory.Delete(Application.persistentDataPath + "/Save", true);
+                Directory.CreateDirectory(Application.persistentDataPath + "/Save");
+            }
+            GUI.enabled = true;
+            if (GUILayout.Button(
+                    new GUIContent("Open Folder",
+                        "Open Save Data Folder.\n" +
+                        "It will open default data path if you not boot DataManager.\n" +
+                        "If it booted, it will open data path from runtime."),
+                    GUILayout.ExpandWidth(false)))
+            {
+                if (DataManager.Booting)
+                {
+                    if (!Directory.Exists(DataManager.Instance.setting.GameDataRelativeDirectoryPath))
+                        Directory.CreateDirectory(DataManager.Instance.setting.GameDataRelativeDirectoryPath);
+                    EditorUtility.RevealInFinder(DataManager.Instance.setting.GameDataRelativeDirectoryPath);
+                }
+                else
+                {
+                    if (!Directory.Exists(Application.persistentDataPath + "/Save"))
+                        Directory.CreateDirectory(Application.persistentDataPath + "/Save");
+                    EditorUtility.RevealInFinder(Application.persistentDataPath + "/Save");
+                }
+            }
+            
+            EditorGUILayout.EndHorizontal();
         }
 
         private Vector2 dataContentScrollPos = Vector2.zero;
@@ -102,7 +155,7 @@ namespace JsonFSDataSystem.Editor.Scripts.Inspector
             file = null;
             DataFolder refFolder = null;
             GUI.enabled = false;
-            GUILayout.TextArea(folder == null ? "" : folder.Path.FullPath());
+            GUILayout.TextArea(folder == null ? "" : folder.Path.FullPath);
             GUI.enabled = true;
             GUILayout.Space(3f);
             
@@ -146,7 +199,7 @@ namespace JsonFSDataSystem.Editor.Scripts.Inspector
             var textOverflow = EditorStyles.label;
             textOverflow.wordWrap = true;
 
-            var path = file == null ? blankDataText : file.Path.FullPath();
+            var path = file == null ? blankDataText : file.Path.FullPath;
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
             EditorGUILayout.LabelField("Name", EditorStyles.largeLabel);
             EditorGUILayout.LabelField(file == null ? blankDataText: file.FileName, textOverflow);

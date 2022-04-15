@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using UnityEngine;
 using xyz.ca2didi.Unity.JsonFSDataSystem;
 using xyz.ca2didi.Unity.JsonFSDataSystem.FS;
@@ -10,20 +11,31 @@ namespace xyz.ca2didi.Unity.Test
         private async void Awake()
         {
             var man = await DataManager.CreateNew().BootContainerAsync();
-            man.AddAfterReadEvent(() =>
+            man.AddCallback(timing =>
             {
-                Debug.Log("After Read");
+                switch (timing)
+                {
+                    case DataManagerCallbackTiming.AfterReadCurrent:
+                    case DataManagerCallbackTiming.AfterReadStatic:
+                        Debug.Log("Loaded");break;
+                    
+                    case DataManagerCallbackTiming.BeforeWriteCurrent:
+                    case DataManagerCallbackTiming.BeforeWriteStatic:
+                        Debug.Log("Save");break;
+                }
+
+                return null;
             });
             
-            if (DataFile.CreateOrGet(FSPath.StaticPathRoot.Forward("/.test")).As<TestData>(out var t))
+            if (DataFile.CreateOrGet(FSPath.StaticPathRoot + ".test").As<TestData>(out var t))
             {
                 var d = t.Read();
                 Debug.Log($"{d.a}");
             }
-
-            var f = DataFolder.CreateOrGet(FSPath.StaticPathRoot.Forward("/Test/hgsbugfnafnluajcrhavvnhmauhcruscpacocjhurscatvgbyu"));
-
-            f.CreateOrGetFolder("/Bucket");
+            
+            var f = DataFolder.CreateOrGet(FSPath.StaticPathRoot + "Test/hgsbugfnafnluaj");
+            
+            f.CreateOrGetFolder("Bucket");
             for (int i = 0; i < 50; i++)
             {
                 f.CreateOrGetFile("int", i.ToString()).As<int>(out var p);
@@ -31,17 +43,11 @@ namespace xyz.ca2didi.Unity.Test
             }
             
             t.Write(new TestData(1, 2));
-            man.AddBeforeWriteEvent(() =>
-            {
-                Debug.Log("Before Write");
-            });
-
-            await man.Container.WriteStaticAsync();
         }
 
-        private void OnDestroy()
+        private async void OnDestroy()
         {
-            DataManager.Instance.CloseContainer();
+            await DataManager.Instance.CloseContainerAsync();
         }
     }
 }

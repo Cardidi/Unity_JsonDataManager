@@ -10,7 +10,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         
         public static DataFile Get(FSPath path)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             FSCheck(path);
             
             if (path.IsFilePath)
@@ -20,7 +20,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 
         public static DataFile CreateOrGet(FSPath path)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             FSCheck(path);
             
             if (path.IsFilePath)
@@ -31,7 +31,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         
         public static bool Exists(FSPath path)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             FSCheck(path);
             
             if (path.IsFilePath)
@@ -51,6 +51,8 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         public string FileName => Path.FileName;
         public readonly FSPath Path;
         public readonly DataFolder Parent;
+        public readonly bool IsStatic;
+        public bool IsDirty { get; internal set; }
         public bool IsRemoved { get; internal set; }
         public bool IsEmpty => jEmpty.ToObject<bool>(DataManager.Instance.serializer);
 
@@ -61,6 +63,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 
         #region Runtime
 
+        private object cached;
         private JValue jEmpty { get; }
         internal JProperty jData { get; }
         
@@ -69,7 +72,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         // Create existed file
         internal DataFile(JProperty jProperty, DataFolder parent)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
 
             if (parent.Path.IsFilePath)
                 throw new Exception();
@@ -88,14 +91,14 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
             
             jData = (JProperty) rootObj["data"].Parent;
             jEmpty = (JValue) rootObj["empty"];
-            
-            JsonToObj();
+
+            IsStatic = FSPath.IsStaticPath(Path);
         }
  
         // Create new file
         internal DataFile(string identify, string typeStr, DataFolder parent, out JProperty jProperty)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             
             if (parent.Path.IsFilePath)
                 throw new Exception();
@@ -127,6 +130,8 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
             jRootObj.Add(new JProperty("empty", jEmpty));
             jRootObj.Add(jData);
             jProperty = new JProperty($"{Path.FileName}", jRootObj);
+            
+            IsStatic = FSPath.IsStaticPath(Path);
         }
 
         private void RemovedCheck()
@@ -141,33 +146,46 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
                 throw new Exception();
         }
 
-        private void Empty()
+        internal void Empty()
         {
             lock (_jsonTransitLock)
             {
                 jData.Value = JValue.CreateNull();
                 jEmpty.Value = true;
+                NotDirty();
             }
         }
 
-        private void ObjToJson(object obj)
+        internal void ObjToJson(object obj)
         {
             lock (_jsonTransitLock)
             {
                 jData.Value = JValue.FromObject(obj, DataManager.Instance.serializer);
                 jEmpty.Value = false;
+                NotDirty();
             }
         }
 
-        private object JsonToObj()
+        internal object JsonToObj()
         {
             lock (_jsonTransitLock)
             {
                 return jData.Value.ToObject(ObjectType, DataManager.Instance.serializer);
             }
         }
-        
 
+        private void DirtyEvent()
+        {
+            ObjToJson(cached);
+        }
+
+        internal void Dropped()
+        {
+            IsRemoved = true;
+            cached = null;
+            NotDirty();
+        }
+        
         #endregion
 
         private readonly object sharedRWLock = new object();
@@ -176,53 +194,91 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         {
             private Operator() {}
 
-            public bool CanReadWrite => !File.IsRemoved;
+            public bool IsRemoved => !file.IsRemoved;
+
             public bool IsEmpty => File.IsEmpty;
-            public readonly DataFile File;
+            public bool IsDirty => File.IsDirty;
+            private readonly DataFile file;
+            public DataFile File
+            {
+                get
+                {
+                    file.RemovedCheck();
+                    return file;
+                }
+            }
 
             internal Operator(DataFile file)
             {
-                File = file;
+                this.file = file;
             }
 
+            /// <summary>
+            /// Read data in this file.<br/>
+            /// It advised that check empty before you call this function.
+            /// </summary>
+            /// <returns>If you trying to get a empty data, it will return null or default(T).</returns>
+            /// <exception cref="InvalidOperationException">If you trying to write into a removed file, it will called.</exception>
             public T Read()
             {
-                if (File.IsRemoved)
-                    throw new InvalidOperationException("File was removed! You can not operate it again.");
+                file.RemovedCheck();
 
-                lock (File.sharedRWLock)
+                lock (file.sharedRWLock)
                 {
-                    if (File.IsEmpty)
+                    if (file.IsEmpty)
                         return default;
-
-                    return (T) File.JsonToObj();
+                    
+                    if (file.cached == null) return (T) file.JsonToObj();
+                    return (T) file.cached;
                 }
             }
 
+            /// <summary>
+            /// Write data to file.
+            /// </summary>
+            /// <exception cref="InvalidOperationException">If you trying to write into a removed file, it will called.</exception>
             public void Write(T obj)
             {
-                if (File.IsRemoved)
-                    throw new InvalidOperationException("File was removed! You can not operate it again.");
+                file.RemovedCheck();
                 
-                lock (File.sharedRWLock)
+                lock (file.sharedRWLock)
                 {
                     if (obj == null)
-                        File.Empty();
-                    
-                    File.ObjToJson(obj);
+                        file.Empty();
+                    else
+                    {
+                        file.cached = obj;
+                        file.Dirty();
+                    }
+                        
                 }
             }
-
-            public void Clean()
+            
+            /// <summary>
+            /// Make this file empty.
+            /// </summary>
+            /// <exception cref="InvalidOperationException">If you trying to write into a removed file, it will called.</exception>
+            public void Empty()
             {
-                if (File.IsRemoved)
-                    throw new InvalidOperationException("File was removed! You can not operate it again.");
+                file.RemovedCheck();
 
-                lock (File._jsonTransitLock)
+                lock (file._jsonTransitLock)
                 {
-                    File.Empty();
+                    if (!file.IsEmpty)
+                    {
+                        file.Empty();
+                    }
                 }
                 
+            }
+            
+            /// <summary>
+            /// Mark this data to dirty that it will save this data.<br/>
+            /// This function will be called if you have write anything into Data File except null.
+            /// </summary>
+            public void Dirty()
+            {
+                lock (file.sharedRWLock) file.Dirty();
             }
             
         }
@@ -237,11 +293,11 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         /// <exception cref="InvalidCastException">Type gived in T is not correct.</exception>
         public bool As<T>(out Operator<T> opt, T defaultValue = default)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
+            RemovedCheck();
 
             lock (_jsonTransitLock)
             {
-                RemovedCheck();
 
                 if (ObjectType != typeof(T)) throw new InvalidCastException();
 
@@ -256,6 +312,29 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
                 return ept;
 
             }
+        }
+
+        /// <summary>
+        /// Mark this data to dirty that it will save this data.<br/>
+        /// This function will be called if you have write anything into Data File.
+        /// </summary>
+        public void Dirty()
+        {
+            RemovedCheck();
+            IsDirty = true;
+            if (IsStatic)
+                DataManager.Instance.StaticDirtyFileRegister += DirtyEvent;
+            else
+                DataManager.Instance.CurrentDirtyFileRegister += DirtyEvent;
+        }
+
+        private void NotDirty()
+        {
+            IsDirty = false;
+            if (IsStatic)
+                DataManager.Instance.StaticDirtyFileRegister -= DirtyEvent;
+            else
+                DataManager.Instance.CurrentDirtyFileRegister -= DirtyEvent;
         }
     }
 }

@@ -20,6 +20,27 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         public static readonly FSPath StaticPathRoot = new FSPath("static://");
         public static readonly FSPath CurrentPathRoot = new FSPath("current://");
 
+        public static void NotFSPathStringException(string str, string paramName)
+        {
+            if (IsFSPathString(str))
+                throw new ArgumentException("You must give a non-FSPath string here!", paramName);
+        }
+        
+        public static bool IsFSPathString(string mayPath) => mayPath.Contains("/");
+        public static bool IsStaticPath(FSPath? path) => path?.ContainerName == "static";
+        public static bool IsSubOf(FSPath sub, FSPath super)
+        {
+            if (super.IsFilePath) return false;
+            if (sub.ContainerName != super.ContainerName) return false;
+            for (var i = 0; i < super.DirectoryVector.Length; i++)
+            {
+                if (sub.DirectoryVector[i] != super.DirectoryVector[i])
+                    return false;
+            }
+
+            return true;
+        }
+
         
         /// <summary>
         /// Create a new FSPath by path string (Full or short)
@@ -45,6 +66,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
             // Match container name
             if (container.Success)
             {
+                // this path has a container name
                 ContainerName = container.Groups["container"].Value.ToLower();
                 // Match path
                 var urlP = container.Groups["url"].Value;
@@ -55,12 +77,14 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
             }
             else
             {
+                // this path has no container name
                 if (path == "/")
                 {
                     DirectoryVector = dics.ToArray();
                     return;
                 }
                 // Match path
+                if (!path.StartsWith("/")) path = "/" + path;
                 url = generator_path.Matches(path);
                 if (url.Count == 0)
                     throw new FormatException("Can not understand path.");
@@ -254,7 +278,9 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         /// <param name="relatePath">The relative path from this path.</param>
         public readonly FSPath Forward(string relatePath)
         {
+#pragma warning disable CS8656
             if (IsFilePath)
+#pragma warning restore CS8656
                 throw new InvalidOperationException("File can not contain a directory or file!");
             return new FSPath(this, relatePath);
         }
@@ -276,67 +302,74 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 
             return this;
         }
-        
-        public string ShortPath()
+
+        public bool SuperOf(FSPath path) => IsSubOf(path, this);
+        public bool SubOf(FSPath path) => IsSubOf(this, path);
+
+        public string ShortPath
         {
-            
-            if (string.IsNullOrEmpty(_cachedShortPath))
+            get
             {
-                var builder = new StringBuilder();
+                if (string.IsNullOrEmpty(_cachedShortPath))
+                {
+                    var builder = new StringBuilder();
             
-                bool w = false;
-                foreach (var s in DirectoryVector)
-                {
-                    w = true;
-                    builder.Append($"/{s}");
-                }
+                    bool w = false;
+                    foreach (var s in DirectoryVector)
+                    {
+                        w = true;
+                        builder.Append($"/{s}");
+                    }
 
-                if (!String.IsNullOrWhiteSpace(FileType))
-                {
-                    w = true;
-                    builder.Append($"/{FileIdentify}.{FileType}");
-                }
+                    if (!String.IsNullOrWhiteSpace(FileType))
+                    {
+                        w = true;
+                        builder.Append($"/{FileIdentify}.{FileType}");
+                    }
 
-                if (!w)
-                    builder.Append("/");
+                    if (!w)
+                        builder.Append("/");
                 
-                _cachedShortPath = builder.ToString();
-            }
+                    _cachedShortPath = builder.ToString();
+                }
             
-            return _cachedShortPath;
+                return _cachedShortPath;
+            }
         }
 
-        public string FullPath()
+        public string FullPath
         {
-            
-            if (string.IsNullOrEmpty(_cachedFullPath))
+            get
             {
-                var builder = new StringBuilder();
-                builder.Append($"{ContainerName}:/");
-
-                bool w = false;
-                foreach (var s in DirectoryVector)
+                if (string.IsNullOrEmpty(_cachedFullPath))
                 {
-                    w = true;
-                    builder.Append($"/{s}");
+                    var builder = new StringBuilder();
+                    builder.Append($"{ContainerName}:/");
+
+                    bool w = false;
+                    foreach (var s in DirectoryVector)
+                    {
+                        w = true;
+                        builder.Append($"/{s}");
+                    }
+
+                    if (!String.IsNullOrWhiteSpace(FileType))
+                    {
+                        w = true;
+                        builder.Append($"/{FileIdentify}.{FileType}");
+                    }
+
+                    if (!w)
+                        builder.Append("/");
+
+                    _cachedFullPath = builder.ToString();
                 }
 
-                if (!String.IsNullOrWhiteSpace(FileType))
-                {
-                    w = true;
-                    builder.Append($"/{FileIdentify}.{FileType}");
-                }
-
-                if (!w)
-                    builder.Append("/");
-
-                _cachedFullPath = builder.ToString();
+                return _cachedFullPath;
             }
-
-            return _cachedFullPath;
         }
 
-        public override string ToString() => FullPath();
+        public override string ToString() => FullPath;
 
         public override int GetHashCode()
         {
@@ -350,15 +383,15 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
             }
         }
 
-        public static bool operator ==(FSPath left, FSPath right)
-        {
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(FSPath left, FSPath right)
-        {
-            return !left.Equals(right);
-        }
+        public static FSPath operator +(FSPath fsPath, string path) => fsPath.Forward(path);
+        public static FSPath operator -(FSPath fsPath, uint dis) => fsPath.Backward((int) dis);
+        public static FSPath operator --(FSPath fsPath) => fsPath.Backward();
+        public static bool operator >(FSPath left, FSPath right) => IsSubOf(left, right);
+        public static bool operator <=(FSPath left, FSPath right) => left.Equals(right) || IsSubOf(right, left);
+        public static bool operator >=(FSPath left, FSPath right) => left.Equals(right) || IsSubOf(left, right);
+        public static bool operator <(FSPath left, FSPath right) => IsSubOf(right, left);
+        public static bool operator ==(FSPath left, FSPath right) => left.Equals(right);
+        public static bool operator !=(FSPath left, FSPath right) => !left.Equals(right);
 
         public override bool Equals(object obj)
         {
@@ -369,22 +402,27 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 
         public bool Equals(FSPath obj)
         {
-            if (obj.ContainerName == ContainerName && 
-                obj.FileIdentify == FileIdentify && 
-                obj.FileType == FileType &&
-                obj.DirectoryVector.Length == DirectoryVector.Length)
-            {
-                for (int i = 0; i < DirectoryVector.Length; i++)
-                {
-                    if (obj.DirectoryVector[i] != DirectoryVector[i])
-                        return false;
-                }
-
-                return true;
-            }
-
-            return false;
+            // if (obj.ContainerName == ContainerName && 
+            //     obj.FileIdentify == FileIdentify && 
+            //     obj.FileType == FileType &&
+            //     obj.DirectoryVector.Length == DirectoryVector.Length)
+            // {
+            //     for (int i = 0; i < DirectoryVector.Length; i++)
+            //     {
+            //         if (obj.DirectoryVector[i] != DirectoryVector[i])
+            //             return false;
+            //     }
+            //
+            //     return true;
+            // }
+            //
+            // return false;
+            var o1 = string.IsNullOrEmpty(obj.ContainerName);
+            var o2 = string.IsNullOrEmpty(ContainerName);
+            if (o1 != o2) return false;
+            if (o1 == false) return true;
+            return GetHashCode() == obj.GetHashCode();
         }
-        
+
     }
 }

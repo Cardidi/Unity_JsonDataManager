@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
-using UnityEngine;
 using xyz.ca2didi.Unity.JsonFSDataSystem.FS;
 
 namespace xyz.ca2didi.Unity.JsonFSDataSystem
@@ -72,33 +71,33 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         {
             if (ticket == null)
                 throw new NullReferenceException($"{nameof(ticket)}");
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             DeleteSafetyChecker();
-            
-            await Task.Yield();
-            foreach (var a in DataManager.Instance.BeforeWriteDiskEvent)
-            {
-                try
-                {
-                    a();
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError(e);
-                }
-            }
 
-            SaveTime = DateTime.UtcNow;
-            Description = description;
-            UpdateInternal(ticket.FSObject);
+            var sta = FSPath.IsStaticPath(ticket.RootPath);
+            await DataManager.Instance.DoCallback((FSPath.IsStaticPath(ticket.RootPath)
+                ? DataManagerCallbackTiming.BeforeWriteStatic
+                : DataManagerCallbackTiming.BeforeWriteCurrent));
             
-            if (fInf.Exists) fInf.Delete();
-            WriteInternal(fInf.Create());
+            await Task.Run(() =>
+            {
+                if (sta)
+                    DataManager.Instance.StaticDirtyFileRegister?.Invoke();
+                else
+                    DataManager.Instance.CurrentDirtyFileRegister?.Invoke();
+                
+                SaveTime = DateTime.UtcNow;
+                Description = description;
+                UpdateInternal(ticket.FSObject);
+
+                if (fInf.Exists) fInf.Delete();
+                WriteInternal(fInf.Create());
+            });
         }
 
         public bool Delete(bool ignoreStatic = false)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             DeleteSafetyChecker();
             
             if (IsStatic && ignoreStatic)
@@ -114,7 +113,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
 
         internal ContainerTicket Construct()
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             DeleteSafetyChecker();
             
             if (jFS.Value.Type != JTokenType.Null)
@@ -138,8 +137,8 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
 
         internal DiskTicket(int id, FileInfo info)
         {
-            if (id < 0)
-                id = -1;
+            if (id < 0) ID = -1;
+            else ID = id;
 
             fInf = info;
             if (fInf.Exists)
@@ -295,7 +294,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         {
             get
             {
-                DataManager.SafetyStartChecker();
+                DataManager.StartChecker();
                 DiskScanSafetyChecker();
                 return _staticContainer;
             }
@@ -305,7 +304,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         {
             get
             {
-                DataManager.SafetyStartChecker();
+                DataManager.StartChecker();
                 DiskScanSafetyChecker();
                 return _currentContainer;
             }
@@ -317,15 +316,17 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         /// <returns>New container</returns>
         public async Task<ContainerTicket> NewContainerAsync()
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             DiskScanSafetyChecker();
 
-            lock (_diskLocker)
-            {
-                _currentContainer?.Dispose();
-                _currentContainer = new ContainerTicket(FSPath.CurrentPathRoot);
-            }
+#pragma warning disable CS4014
+            DisposeCurrentContainerAsync();
+#pragma warning restore CS4014
             
+            _currentContainer = await Task.Run(() => new ContainerTicket(FSPath.CurrentPathRoot));
+            await DataManager.Instance.DoCallback(FSPath.IsStaticPath(_currentContainer.RootPath)
+                ? DataManagerCallbackTiming.AfterReadStatic
+                : DataManagerCallbackTiming.AfterReadCurrent);
             return _currentContainer;
         }
 
@@ -337,49 +338,46 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         /// <exception cref="ArgumentNullException">If ticket is null, report it.</exception>
         public async Task<ContainerTicket> UseContainerAsync(DiskTicket ticket)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             DiskScanSafetyChecker();
             if (ticket == null)
                 throw new ArgumentNullException(nameof(ticket));
 
             if (ticket.IsStatic || ticket.IsDisposed)
                 return null;
+
+#pragma warning disable CS4014
+            DisposeCurrentContainerAsync();
+#pragma warning restore CS4014
             
-            lock (_diskLocker)
-            {
-                _currentContainer?.Dispose();
-                _currentContainer = ticket.Construct();
-            }
-
-            await Task.Yield();
-            foreach (var a in DataManager.Instance.AfterReadDiskEvent)
-            {
-                try
-                {
-                    a();
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError(e);
-                }
-            }
-
+            _currentContainer = await Task.Run(ticket.Construct);
+            await DataManager.Instance.DoCallback(FSPath.IsStaticPath(_currentContainer.RootPath)
+                ? DataManagerCallbackTiming.AfterReadStatic
+                : DataManagerCallbackTiming.AfterReadCurrent);
             return _currentContainer;
         }
 
         /// <summary>
         /// Destroy current container.It will automatically dispose older current container.
         /// </summary>
-        public void DestroyCurrentContainer()
+        public Task DestroyCurrentContainerAsync()
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             DiskScanSafetyChecker();
-            
-            lock (_diskLocker)
+
+            return DisposeCurrentContainerAsync();
+        }
+
+        public Task DisposeCurrentContainerAsync()
+        {
+            if (_currentContainer != null)
             {
-                _currentContainer?.Dispose();
+                var c = _currentContainer;
                 _currentContainer = null;
+                return Task.Run(c.Dispose);
             }
+            
+            return Task.CompletedTask;
         }
         
         /// <summary>
@@ -389,7 +387,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         /// <exception cref="ArgumentOutOfRangeException">The container of this FSPath is invalid.</exception>
         public DataFolder GetRootFolder(FSPath path)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             DiskScanSafetyChecker();
             
             if (path.ContainerName == "static")
@@ -422,7 +420,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         /// </summary>
         public async Task WriteStaticAsync()
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             
             await _staticDiskTicket.WriteAsync(_staticContainer);
         }
@@ -433,15 +431,14 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         /// <returns>If meet limitation of disk ticket count, it will return null.</returns>
         public DiskTicket CreateDiskTicket()
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             
             lock (_diskLocker)
             {
                 var setting = DataManager.Instance.setting;
                 var path = $"{setting.GameRootDirectoryPath}{setting.GameDataRelativeDirectoryPath}";
                 var lim = setting.MaxGameDataCount > 0
-                    ? setting.MaxGameDataCount
-                    : Int32.MaxValue - 1;
+                    ? setting.MaxGameDataCount : Int32.MaxValue - 1;
 
                 var i = 0;
                 for (; _usedNum.Contains(i) && i <= lim ; i++);
@@ -457,7 +454,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         
         public DiskTicket[] GetAllDiskTickets()
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             DiskScanSafetyChecker();
             
             return _diskTicket.FindAll(m => !m.IsDisposed).ToArray();
@@ -465,22 +462,20 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
 
         public DiskTicket GetStaticDiskTicket()
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             DiskScanSafetyChecker();
             return _staticDiskTicket;
         }
 
-        internal async Task ScanJsonFile()
+        internal Task ScanJsonFile() => Task.Run(() =>
         {
-            //DataManager.SafetyStartChecker();
-            
             DiskTicket stct = null;
             var ts = new List<DiskTicket>();
             var setting = DataManager.Instance.setting;
             var path = $"{setting.GameRootDirectoryPath}{setting.GameDataRelativeDirectoryPath}";
             var gdFileName = setting.DataFileNamingRule.GenerateGlobalDataFileName();
             var nums = new HashSet<int>();
-            
+
             // If root directory is existed
             if (Directory.Exists(path))
             {
@@ -488,8 +483,8 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
 
                 // Scan json file in this directory
                 foreach (var inf in rootDir.GetFiles())
-                { 
-                    int id = setting.DataFileNamingRule.MatchDataFileID(inf.Name); 
+                {
+                    int id = setting.DataFileNamingRule.MatchDataFileID(inf.Name);
                     if (id >= 0)
                     {
                         nums.Add(id);
@@ -509,23 +504,23 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                 if (stct == null)
                 {
                     stct = new DiskTicket(
-                        -1, 
+                        -1,
                         new FileInfo($"{path}/{setting.DataFileNamingRule.GenerateGlobalDataFileName()}"));
                 }
 
             }
             else
             {
-                Directory.CreateDirectory(path); 
+                Directory.CreateDirectory(path);
                 stct = new DiskTicket(
-                    -1, 
+                    -1,
                     new FileInfo($"{path}/{setting.DataFileNamingRule.GenerateGlobalDataFileName()}"));
- 
+
             }
-            
+
             lock (_diskLocker)
             {
- 
+
                 _staticDiskTicket?.Dispose();
                 _staticDiskTicket = stct;
                 _staticContainer?.Dispose();
@@ -540,14 +535,15 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                         t.Dispose();
                     _diskTicket.Clear();
                 }
+
                 _diskTicket = ts;
-                
+
                 _usedNum?.Clear();
                 _usedNum = nums;
             }
-
-            await Task.Yield();
-        }
+            
+            DataManager.Instance.DoCallback(DataManagerCallbackTiming.AfterReadStatic).Wait();
+        });
 
         private void DiskScanSafetyChecker()
         {
@@ -563,9 +559,8 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         private List<DataTypeBinder> binder;
         private Hashtable typeStrMap;
 
-        internal async Task ScanBinders()
+        internal Task ScanBinders() => Task.Run(() =>
         {
-
             var bid = new List<DataTypeBinder>();
             var map = new Hashtable();
 
@@ -576,10 +571,10 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                 var attr = type.GetCustomAttributes(typeof(JsonTypeDefine), false) as JsonTypeDefine[];
                 if (attr == null && attr.Length == 0)
                     continue;
-                
+
                 typDef.AddRange(attr);
             }
-                
+
             for (var i = 0; i < typDef.Count; i++)
             {
                 var item = new DataTypeBinder(typDef[i]);
@@ -591,21 +586,19 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             {
                 binder?.Clear();
                 binder = bid;
-                    
+
                 typeStrMap?.Clear();
                 typeStrMap = map;
             }
+        });
 
-            await Task.Yield();
-        }
-        
         /// <summary>
         /// Find a binder via it's type string.
         /// </summary>
         /// <returns>If not exist, return null.</returns>
         public DataTypeBinder GetBinder(string typeStr)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             BinderScanChecker();
 
             lock (_typeBinderLocker)
@@ -623,7 +616,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         /// <returns>If string is invalid, return null</returns>
         public DataTypeBinder AddBinder(Type typ, string typeStr)
         {
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             BinderScanChecker();
 
             typeStr = typeStr.Trim();
@@ -652,7 +645,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         
         public DataTypeBinder[] GetBinders(Predicate<DataTypeBinder> match = null)
         {            
-            DataManager.SafetyStartChecker();
+            DataManager.StartChecker();
             BinderScanChecker();
 
             lock (_typeBinderLocker)
