@@ -79,13 +79,9 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                 ? DataManagerCallbackTiming.BeforeWriteStatic
                 : DataManagerCallbackTiming.BeforeWriteCurrent));
             
-            await Task.Run(() =>
+            await Task.Run(async () =>
             {
-                if (sta)
-                    DataManager.Instance.StaticDirtyFileRegister?.Invoke();
-                else
-                    DataManager.Instance.CurrentDirtyFileRegister?.Invoke();
-                
+                await DataManager.Instance.FlushAllData();
                 SaveTime = DateTime.UtcNow;
                 Description = description;
                 UpdateInternal(ticket.FSObject);
@@ -404,6 +400,12 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
 
             throw new ArgumentOutOfRangeException(nameof(path));
         }
+
+        /// <summary>
+        /// Clean dirty flag of all files and make sure changes has been committed to json tree.
+        /// </summary>
+        /// <returns></returns>
+        public Task RefreshContainer() => DataManager.Instance.FlushAllData();
 
         #endregion
         

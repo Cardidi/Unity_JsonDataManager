@@ -156,13 +156,13 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
             }
         }
 
-        internal void ObjToJson(object obj)
+        internal void ObjToJson(object obj, bool resetDirty = true)
         {
             lock (_jsonTransitLock)
             {
                 jData.Value = JValue.FromObject(obj, DataManager.Instance.serializer);
                 jEmpty.Value = false;
-                NotDirty();
+                if (resetDirty) NotDirty();
             }
         }
 
@@ -170,13 +170,14 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         {
             lock (_jsonTransitLock)
             {
-                return jData.Value.ToObject(ObjectType, DataManager.Instance.serializer);
+                cached = jData.Value.ToObject(ObjectType, DataManager.Instance.serializer);
+                return cached;
             }
         }
 
-        private void DirtyEvent()
+        public void Flush()
         {
-            ObjToJson(cached);
+            if (IsDirty) ObjToJson(cached);
         }
 
         internal void Dropped()
@@ -314,6 +315,12 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
             }
         }
 
+        private void FreshRegister()
+        {
+            if (IsDirty) ObjToJson(cached, false);
+            IsDirty = false;
+        }
+
         /// <summary>
         /// Mark this data to dirty that it will save this data.<br/>
         /// This function will be called if you have write anything into Data File.
@@ -322,19 +329,13 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         {
             RemovedCheck();
             IsDirty = true;
-            if (IsStatic)
-                DataManager.Instance.StaticDirtyFileRegister += DirtyEvent;
-            else
-                DataManager.Instance.CurrentDirtyFileRegister += DirtyEvent;
+            DataManager.Instance.FlushDataBuffer.Add(FreshRegister);
         }
 
         private void NotDirty()
         {
             IsDirty = false;
-            if (IsStatic)
-                DataManager.Instance.StaticDirtyFileRegister -= DirtyEvent;
-            else
-                DataManager.Instance.CurrentDirtyFileRegister -= DirtyEvent;
+            DataManager.Instance.FlushDataBuffer.Remove(FreshRegister);
         }
     }
 }

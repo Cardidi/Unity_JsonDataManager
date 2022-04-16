@@ -27,22 +27,22 @@ namespace xyz.ca2didi.Unity.Test
                 return null;
             });
             
-            if (DataFile.CreateOrGet(FSPath.StaticPathRoot + ".test").As<TestData>(out var t))
-            {
-                var d = t.Read();
-                Debug.Log($"{d.a}");
-            }
-            
-            var f = DataFolder.CreateOrGet(FSPath.StaticPathRoot + "Test/hgsbugfnafnluaj");
-            
-            f.CreateOrGetFolder("Bucket");
-            for (int i = 0; i < 50; i++)
-            {
-                f.CreateOrGetFile("int", i.ToString()).As<int>(out var p);
-                p.Write(i);
-            }
-            
-            t.Write(new TestData(1, 2));
+            // if (DataFile.CreateOrGet(FSPath.StaticPathRoot + ".test").As<TestData>(out var t))
+            // {
+            //     var d = t.Read();
+            //     Debug.Log($"{d.a}");
+            // }
+            //
+            // var f = DataFolder.CreateOrGet(FSPath.StaticPathRoot + "Test/hgsbugfnafnluaj");
+            //
+            // f.CreateOrGetFolder("Bucket");
+            // for (int i = 0; i < 50; i++)
+            // {
+            //     f.CreateOrGetFile("int", i.ToString()).As<int>(out var p);
+            //     p.Write(i);
+            // }
+            //
+            // t.Write(new TestData(1, 2));
         }
 
         private async void OnDestroy()
