@@ -65,8 +65,7 @@ namespace JsonFSDataSystem.Editor.Scripts.Inspector
             GUI.enabled = DataManager.IsEnabled;
             if (GUILayout.Button("Refresh", GUILayout.ExpandWidth(false)))
             {
-                DataManager.Instance.StaticDirtyFileRegister?.Invoke();
-                DataManager.Instance.CurrentDirtyFileRegister?.Invoke();
+                DataManager.Instance.FlushAllData();
             }
             if (GUILayout.Button("Open Static", GUILayout.ExpandWidth(false)))
                 currentFolder = DataFolder.Get(FSPath.StaticPathRoot);
@@ -208,13 +207,14 @@ namespace JsonFSDataSystem.Editor.Scripts.Inspector
             EditorGUILayout.LabelField("Name", EditorStyles.largeLabel);
             EditorGUILayout.LabelField(file == null ? blankDataText: file.FileName, textOverflow);
             EditorGUILayout.LabelField("Type", EditorStyles.largeLabel);
-            EditorGUILayout.LabelField(file == null ? blankDataText: file.ObjectType.FullName, textOverflow);
+            EditorGUILayout.LabelField(new GUIContent(
+                file == null ? blankDataText: file.ObjectType.Name,
+                file == null ? blankDataText: file.ObjectType.FullName), textOverflow);
             EditorGUILayout.LabelField("Path", EditorStyles.largeLabel);
             EditorGUILayout.LabelField(path, textOverflow);
             EditorGUILayout.EndVertical();
             GUI.enabled = file != null;
-            if (GUILayout.Button("Copy Path"))
-                GUIUtility.systemCopyBuffer = path;
+            if (GUILayout.Button("Copy Path")) GUIUtility.systemCopyBuffer = path;
             GUI.enabled = true;
         }
 
@@ -229,9 +229,12 @@ namespace JsonFSDataSystem.Editor.Scripts.Inspector
             if (file.IsRemoved)
                 EditorGUILayout.HelpBox("Data has already removed! It may cause by delete or container unload.", MessageType.Error);
                 
+            if (file.IsDirty)
+                EditorGUILayout.HelpBox("Data has marked to dirty. It may out fo date.\nUse Refresh to see current data.", MessageType.Warning);
+            
             if (file.IsEmpty)
             {
-                EditorGUILayout.HelpBox("This is an empty data!", MessageType.Warning);
+                EditorGUILayout.HelpBox("This is an empty data!", MessageType.Info);
             }
             else
             {

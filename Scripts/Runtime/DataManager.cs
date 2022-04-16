@@ -141,7 +141,42 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
 
         #region Settings
 
-        internal Action StaticDirtyFileRegister, CurrentDirtyFileRegister;
+        private List<Action> flushDataBufferList = new List<Action>();
+
+        internal List<Action> FlushDataBuffer
+        {
+            get
+            {
+                lock (flushDataBufferList) return flushDataBufferList;
+            }
+        }
+
+        internal Task FlushAllData()
+        {
+            Action[] list;
+            lock (flushDataBufferList)
+            {
+                list = flushDataBufferList.ToArray();
+                flushDataBufferList.Clear();
+            }
+
+            return Task.Run(() =>
+            {
+                foreach (var action in list)
+                {
+                    try
+                    {
+                        action?.Invoke();
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogError(e);
+                    }
+                }
+            });
+
+        }
+        
 
         private List<Func<DataManagerCallbackTiming, Task>> callbacks = new List<Func<DataManagerCallbackTiming, Task>>();
 
