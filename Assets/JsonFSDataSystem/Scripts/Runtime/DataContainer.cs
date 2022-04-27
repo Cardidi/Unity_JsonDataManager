@@ -315,19 +315,19 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             DataManager.StartChecker();
             DiskScanSafetyChecker();
 
-#pragma warning disable CS4014
-            DisposeCurrentContainerAsync();
-#pragma warning restore CS4014
+            var dispose = DisposeCurrentContainerAsync();
             
             _currentContainer = await Task.Run(() => new ContainerTicket(FSPath.CurrentPathRoot));
             await DataManager.Instance.DoCallback(FSPath.IsStaticPath(_currentContainer.RootPath)
                 ? DataManagerCallbackTiming.AfterReadStatic
                 : DataManagerCallbackTiming.AfterReadCurrent);
+            
+            await dispose;
             return _currentContainer;
         }
 
         /// <summary>
-        /// Use an existed disk ticket to create a container with data filled and set it as current container.It will automatically dispose older current container.
+        /// Use an existed disk ticket to create a container with data filled and set it as current container.<br/>It will automatically dispose older current container.
         /// </summary>
         /// <param name="ticket">New container with data</param>
         /// <returns>If ticket is refer to a static or disposed container, it will return null.</returns>
@@ -342,14 +342,14 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             if (ticket.IsStatic || ticket.IsDisposed)
                 return null;
 
-#pragma warning disable CS4014
-            DisposeCurrentContainerAsync();
-#pragma warning restore CS4014
+            var dispose = DisposeCurrentContainerAsync();
             
             _currentContainer = await Task.Run(ticket.Construct);
             await DataManager.Instance.DoCallback(FSPath.IsStaticPath(_currentContainer.RootPath)
                 ? DataManagerCallbackTiming.AfterReadStatic
                 : DataManagerCallbackTiming.AfterReadCurrent);
+            
+            await dispose;
             return _currentContainer;
         }
 
@@ -364,7 +364,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             return DisposeCurrentContainerAsync();
         }
 
-        public Task DisposeCurrentContainerAsync()
+        private Task DisposeCurrentContainerAsync()
         {
             if (_currentContainer != null)
             {
@@ -416,7 +416,6 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         private DiskTicket _staticDiskTicket;
         private HashSet<int> _usedNum;
         
-
         /// <summary>
         /// A shortcut to write static data.
         /// </summary>
@@ -445,6 +444,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                 var i = 0;
                 for (; _usedNum.Contains(i) && i <= lim ; i++);
                 if (i > lim) return null;
+                _usedNum.Add(i);
 
                 var inf = new FileInfo($"{path}/{setting.DataFileNamingRule.GenerateDataFileName((uint) i)}");
                 var ticket = new DiskTicket(i, inf);
