@@ -84,7 +84,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                 await DataManager.Instance.FlushAllData();
                 SaveTime = DateTime.UtcNow;
                 Description = description;
-                UpdateInternal(ticket.FSObject);
+                UpdateInternal((JObject) ticket.FSObject.DeepClone());
 
                 if (fInf.Exists) fInf.Delete();
                 WriteInternal(fInf.Create());
@@ -116,7 +116,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             {
                 return new ContainerTicket(
                     IsStatic ? FSPath.StaticPathRoot : FSPath.CurrentPathRoot,
-                    (JObject) jFS.Value);
+                    (JObject) ((JProperty) jFS.DeepClone()).Value);
             }
             
             return new ContainerTicket(IsStatic ? FSPath.StaticPathRoot : FSPath.CurrentPathRoot);
