@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 
 namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
@@ -144,15 +145,17 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
             lock (_fileExecuteLock)
             {
                 // Update Folders
-                foreach (var jToken in _bridge.SubFolders.Properties())
+                var folder = _bridge.SubFolders.Properties().ToArray();
+                for (var i = 0; i < folder.Length; i++)
                 {
-                    _folders.Add(new DataFolder(this, jToken.Name, (JObject) jToken.Value));
+                    _folders.Add(new DataFolder(this, folder[i].Name, (JObject) folder[i].Value));
                 }
-                
+
                 // Update Files
-                foreach (var jToken in _bridge.Files.Properties())
+                var file = _bridge.Files.Properties().ToArray();
+                for (var i = 0; i < file.Length; i++)
                 {
-                    _files.Add(new DataFile(jToken, this));
+                    _files.Add(new DataFile(file[i], this));
                 }
             }
         }

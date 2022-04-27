@@ -195,7 +195,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         {
             private Operator() {}
 
-            public bool IsRemoved => !file.IsRemoved;
+            public bool IsRemoved => file.IsRemoved;
 
             public bool IsEmpty => File.IsEmpty;
             public bool IsDirty => File.IsDirty;
@@ -317,7 +317,8 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 
         private void FreshRegister()
         {
-            if (IsDirty) ObjToJson(cached, false);
+            if (cached == null) Empty();
+            else if (IsDirty) ObjToJson(cached, false);
             IsDirty = false;
         }
 
