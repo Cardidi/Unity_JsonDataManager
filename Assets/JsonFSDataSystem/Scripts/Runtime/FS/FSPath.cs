@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
+using xyz.ca2didi.Unity.JsonFSDataSystem.Exceptions;
 
 namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 {
@@ -20,12 +21,6 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         public static readonly FSPath StaticPathRoot = new FSPath("static://");
         public static readonly FSPath CurrentPathRoot = new FSPath("current://");
 
-        public static void NotFSPathStringException(string str, string paramName)
-        {
-            if (IsFSPathString(str))
-                throw new ArgumentException("You must give a non-FSPath string here!", paramName);
-        }
-        
         public static bool IsFSPathString(string mayPath) => mayPath.Contains("/");
         public static bool IsStaticPath(FSPath? path) => path?.ContainerName == "static";
         public static bool IsSubOf(FSPath sub, FSPath super)
@@ -131,7 +126,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         private FSPath(FSPath child, int previous)
         {
             if (child.Equals(default))
-                throw new NullReferenceException(nameof(child));
+                throw new ArgumentNullException(nameof(child));
             
             if (previous < 1)
                 throw new ArgumentOutOfRangeException(nameof(previous));
@@ -162,14 +157,14 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
                 throw new ArgumentNullException(nameof(location));
 
             if (parent.IsFilePath)
-                throw new InvalidOperationException("Parent should be a directory, not a file!");
+                throw new NotFolderPathException(parent);
 
             _cachedShortPath = _cachedFullPath = "";
             FileIdentify = FileType = "";
 
             var url = generator_path.Matches($"/{location}");
             if (url.Count == 0)
-                throw new Exception("Invalid Format");
+                throw new FormatException("Invalid Format");
                     
             var dics = new List<string>(parent.DirectoryVector);
             for (var i = 0; i < url.Count; i++)

@@ -23,6 +23,8 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         
         public static DataManager Instance { get; protected set; }
 
+        public static DataContainer InsContainer => Instance?._container;
+
         public static bool IsEnabled { get; private set; }
 
         internal static bool Booting => Instance != null;
@@ -60,6 +62,13 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         }
         
 
+
+        #endregion
+
+        #region LifeCircle
+        
+        private bool Closing = false;
+        
         private DataManager(DataManagerSetting setting, Action<Exception> err)
         {
             this.setting = setting;
@@ -87,8 +96,6 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                 setting.SerializerSettings.Formatting = Formatting.Indented;
             }
         }
-
-        private bool Closing = false;
 
         public async Task CloseContainerAsync()
         {
@@ -120,10 +127,10 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             if (Instance != null) return Instance;
             try
             {
-               Instance = this;
-               _container = new DataContainer();
-               await _container.ScanBinders();
-               await _container.ScanJsonFile();
+                Instance = this;
+                _container = new DataContainer();
+                await _container.ScanBinders();
+                await _container.ScanJsonFile();
             }
             catch (Exception e)
             {
@@ -180,8 +187,16 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
 
         private List<Func<DataManagerCallbackTiming, Task>> callbacks = new List<Func<DataManagerCallbackTiming, Task>>();
 
+        /// <summary>
+        /// Add a callback while state of data has changed.
+        /// </summary>
+        /// <param name="cb">callback pointer</param>
         public void AddCallback(Func<DataManagerCallbackTiming, Task> cb) => callbacks.Add(cb);
 
+        /// <summary>
+        /// Remove the callback while state of data has changed.
+        /// </summary>
+        /// <param name="cb">callback pointer</param>
         public bool RemoveCallback(Func<DataManagerCallbackTiming, Task> cb) => callbacks.Remove(cb);
 
         internal Task DoCallback(DataManagerCallbackTiming timing)
@@ -226,6 +241,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         BeforeWriteCurrent = 1,
         BeforeWriteStatic = 2,
         AfterReadCurrent = 4,
-        AfterReadStatic = 8
+        AfterReadStatic = 8,
+        AfterNewCurrent = 16
     }
 }

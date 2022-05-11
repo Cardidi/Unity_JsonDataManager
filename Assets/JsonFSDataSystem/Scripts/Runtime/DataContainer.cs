@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
+using xyz.ca2didi.Unity.JsonFSDataSystem.Exceptions;
 using xyz.ca2didi.Unity.JsonFSDataSystem.FS;
 
 namespace xyz.ca2didi.Unity.JsonFSDataSystem
@@ -70,7 +71,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         public async Task WriteAsync(ContainerTicket ticket, string description = "")
         {
             if (ticket == null)
-                throw new NullReferenceException($"{nameof(ticket)}");
+                throw new ArgumentNullException($"{nameof(ticket)}");
             DataManager.StartChecker();
             DeleteSafetyChecker();
 
@@ -318,9 +319,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             var dispose = DisposeCurrentContainerAsync();
             
             _currentContainer = await Task.Run(() => new ContainerTicket(FSPath.CurrentPathRoot));
-            await DataManager.Instance.DoCallback(FSPath.IsStaticPath(_currentContainer.RootPath)
-                ? DataManagerCallbackTiming.AfterReadStatic
-                : DataManagerCallbackTiming.AfterReadCurrent);
+            await DataManager.Instance.DoCallback(DataManagerCallbackTiming.AfterNewCurrent);
             
             await dispose;
             return _currentContainer;
@@ -345,9 +344,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             var dispose = DisposeCurrentContainerAsync();
             
             _currentContainer = await Task.Run(ticket.Construct);
-            await DataManager.Instance.DoCallback(FSPath.IsStaticPath(_currentContainer.RootPath)
-                ? DataManagerCallbackTiming.AfterReadStatic
-                : DataManagerCallbackTiming.AfterReadCurrent);
+            await DataManager.Instance.DoCallback(DataManagerCallbackTiming.AfterReadCurrent);
             
             await dispose;
             return _currentContainer;
@@ -398,7 +395,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                 return _currentContainer.Root;
             }
 
-            throw new ArgumentOutOfRangeException(nameof(path));
+            throw new FSPathNotExistException(path);
         }
 
         /// <summary>
@@ -495,10 +492,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                     }
                     else if (inf.Name == gdFileName)
                     {
-                        if (stct == null)
-                            stct = new DiskTicket(-1, inf);
-                        else
-                            throw new Exception();
+                        stct = new DiskTicket(-1, inf);
                     }
                 }
 
