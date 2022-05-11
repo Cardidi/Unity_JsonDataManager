@@ -1,6 +1,6 @@
 using System;
-using System.Runtime.CompilerServices;
 using Newtonsoft.Json.Linq;
+using xyz.ca2didi.Unity.JsonFSDataSystem.Exceptions;
 
 namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 {
@@ -13,20 +13,16 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
             DataManager.StartChecker();
             FSCheck(path);
             
-            if (path.IsFilePath)
-                return DataFolder.Get(path.Backward())?.GetFile(path.FileIdentify, path.FileType);
-            throw new Exception();
+            return DataFolder.Get(path.Backward())?.GetFile(path.FileIdentify, path.FileType);
         }
 
         public static DataFile CreateOrGet(FSPath path)
         {
             DataManager.StartChecker();
             FSCheck(path);
-            
-            if (path.IsFilePath)
-                return DataFolder.CreateOrGet(path.Backward()).
-                    CreateOrGetFile(path.FileType, path.FileIdentify);
-            throw new Exception();
+
+            return DataFolder.CreateOrGet(path.Backward()).
+                CreateOrGetFile(path.FileType, path.FileIdentify);
         }
         
         public static bool Exists(FSPath path)
@@ -34,13 +30,8 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
             DataManager.StartChecker();
             FSCheck(path);
             
-            if (path.IsFilePath)
-            {
-                var f = DataFolder.Get(path.Backward());
-                return f?.ExistsFile(path.FileType, path.FileIdentify) ?? false;
-            }
-            throw new Exception();
-            
+            var f = DataFolder.Get(path.Backward());
+            return f?.ExistsFile(path.FileType, path.FileIdentify) ?? false;
         }
 
         #endregion
@@ -74,9 +65,6 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         {
             DataManager.StartChecker();
 
-            if (parent.Path.IsFilePath)
-                throw new Exception();
-            
             var fName = jProperty.Name;
             IsRemoved = false;
             Parent = parent;
@@ -87,7 +75,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
             
             TypeBinder = DataManager.Instance.Container.GetBinder(typeStr);
             if (TypeBinder == null)
-                throw new Exception();
+                throw new NoMatchTypeBinderException(typeStr);
             
             jData = (JProperty) rootObj["data"].Parent;
             jEmpty = (JValue) rootObj["empty"];
@@ -99,14 +87,11 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         internal DataFile(string identify, string typeStr, DataFolder parent, out JProperty jProperty)
         {
             DataManager.StartChecker();
-            
-            if (parent.Path.IsFilePath)
-                throw new Exception();
-            
+
             typeStr = typeStr.Trim();
             TypeBinder = DataManager.Instance.Container.GetBinder(typeStr);
             if (TypeBinder == null)
-                throw new Exception();
+                throw new NoMatchTypeBinderException(typeStr);
             
             IsRemoved = false;
             Parent = parent;
@@ -143,7 +128,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         private static void FSCheck(FSPath path)
         {
             if (!path.IsFilePath)
-                throw new Exception();
+                throw new NotFilePathException(path);
         }
 
         internal void Empty()

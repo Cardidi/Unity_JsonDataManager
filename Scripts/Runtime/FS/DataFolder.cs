@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json.Linq;
+using xyz.ca2didi.Unity.JsonFSDataSystem.Exceptions;
 
 namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 {
@@ -86,7 +87,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
                 SubFolders = jThis["folders"] as JObject;
                 Files = jThis["files"] as JObject;
                 if (SubFolders == null || Files == null)
-                    throw new Exception();
+                    throw new DataStructureBrokenException(jThis);
             }
         }
 
@@ -169,7 +170,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         private static void FSCheck(FSPath path)
         {
             if (path.IsFilePath)
-                throw new Exception();
+                throw new NotFolderPathException(path);
         }
 
         #endregion
@@ -186,13 +187,20 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
 
 
         #region FileOperation
+        
+        public static void NotFSPathStringException(string str, string paramName)
+        {
+            if (FSPath.IsFSPathString(str))
+                throw new ArgumentException("You must give a non-FSPath string here!", paramName);
+        }
+        
 
         public DataFile CreateOrGetFile(string typeStr, string identify = "")
         {
             DataManager.StartChecker();
             RemovedCheck();
-            FSPath.NotFSPathStringException(typeStr, nameof(typeStr));
-            FSPath.NotFSPathStringException(identify, nameof(identify));
+            NotFSPathStringException(typeStr, nameof(typeStr));
+            NotFSPathStringException(identify, nameof(identify));
 
             lock (_fileExecuteLock)
             {
@@ -212,8 +220,8 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         {
             DataManager.StartChecker();
             RemovedCheck();
-            FSPath.NotFSPathStringException(typeStr, nameof(typeStr));
-            FSPath.NotFSPathStringException(identify, nameof(identify));
+            NotFSPathStringException(typeStr, nameof(typeStr));
+            NotFSPathStringException(identify, nameof(identify));
 
             lock (_fileExecuteLock)
             {
@@ -225,8 +233,8 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         {            
             DataManager.StartChecker();
             RemovedCheck();
-            FSPath.NotFSPathStringException(typeStr, nameof(typeStr));
-            FSPath.NotFSPathStringException(identify, nameof(identify));
+            NotFSPathStringException(typeStr, nameof(typeStr));
+            NotFSPathStringException(identify, nameof(identify));
 
             lock (_fileExecuteLock)
             {
@@ -263,8 +271,8 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         {
             DataManager.StartChecker();
             RemovedCheck();
-            FSPath.NotFSPathStringException(typeStr, nameof(typeStr));
-            FSPath.NotFSPathStringException(identify, nameof(identify));
+            NotFSPathStringException(typeStr, nameof(typeStr));
+            NotFSPathStringException(identify, nameof(identify));
             
             lock (_fileExecuteLock)
                 return _files.Find(m => m.Path.FileIdentify == identify && m.Path.FileType == typeStr);
@@ -296,10 +304,10 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         {
             DataManager.StartChecker();
             RemovedCheck();
-            FSPath.NotFSPathStringException(name, nameof(name));
+            NotFSPathStringException(name, nameof(name));
 
             if (string.IsNullOrEmpty(name))
-                throw new Exception();
+                throw new ArgumentNullException(nameof(name));
             
             lock (_fileExecuteLock)
             {
@@ -318,10 +326,10 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         {
             DataManager.StartChecker();
             RemovedCheck();
-            FSPath.NotFSPathStringException(name, nameof(name));
+            NotFSPathStringException(name, nameof(name));
 
             if (string.IsNullOrWhiteSpace(name))
-                throw new Exception();
+                throw new ArgumentNullException(nameof(name));
             
             lock (_fileExecuteLock)
             {
@@ -366,10 +374,10 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         {
             DataManager.StartChecker();
             RemovedCheck();
-            FSPath.NotFSPathStringException(name, nameof(name));
+            NotFSPathStringException(name, nameof(name));
 
             if (string.IsNullOrWhiteSpace(name))
-                throw new Exception();
+                throw new ArgumentNullException(nameof(name));
             
             lock (_fileExecuteLock)
                 return _folders.FindIndex(m => m.FolderName == name) >= 0;
@@ -380,10 +388,10 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
         {
             DataManager.StartChecker();
             RemovedCheck();
-            FSPath.NotFSPathStringException(name, nameof(name));
+            NotFSPathStringException(name, nameof(name));
 
             if (string.IsNullOrWhiteSpace(name))
-                throw new Exception();
+                throw new ArgumentNullException(nameof(name));
 
             lock (_fileExecuteLock)
                 return _folders.Find(m => m.FolderName == name);
