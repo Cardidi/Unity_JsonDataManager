@@ -1,6 +1,6 @@
 using System;
 
-namespace xyz.ca2didi.Unity.JsonFSDataSystem
+namespace Ca2didi.JsonFSDataSystem
 {
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = true)]
     public class JsonTypeDefine : Attribute

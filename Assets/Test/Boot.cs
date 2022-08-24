@@ -1,31 +1,13 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using Ca2didi.JsonFSDataSystem;
 using UnityEngine;
-using xyz.ca2didi.Unity.JsonFSDataSystem;
-using xyz.ca2didi.Unity.JsonFSDataSystem.FS;
 
-namespace xyz.ca2didi.Unity.Test
+namespace Test
 {
     public class Boot : MonoBehaviour
     {
-        private async void Awake()
+        private void Awake()
         {
-            var man = await DataManager.CreateNew().BootContainerAsync();
-            man.AddCallback(timing =>
-            {
-                switch (timing)
-                {
-                    case DataManagerCallbackTiming.AfterReadCurrent:
-                    case DataManagerCallbackTiming.AfterReadStatic:
-                        Debug.Log("Loaded");break;
-                    
-                    case DataManagerCallbackTiming.BeforeWriteCurrent:
-                    case DataManagerCallbackTiming.BeforeWriteStatic:
-                        Debug.Log("Save");break;
-                }
-
-                return null;
-            });
+            var man = DataManager.CreateNew();
             
             // if (DataFile.CreateOrGet(FSPath.StaticPathRoot + ".test").As<TestData>(out var t))
             // {
@@ -44,10 +26,6 @@ namespace xyz.ca2didi.Unity.Test
             //
             // t.Write(new TestData(1, 2));
         }
-
-        private async void OnDestroy()
-        {
-            await DataManager.Instance.CloseContainerAsync();
-        }
+        
     }
 }

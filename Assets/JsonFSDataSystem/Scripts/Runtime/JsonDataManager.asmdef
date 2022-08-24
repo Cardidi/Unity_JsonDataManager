@@ -1,6 +1,6 @@
 {
     "name": "JsonDataManager",
-    "rootNamespace": "xyz.ca2didi.Unity",
+    "rootNamespace": "Ca2didi",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

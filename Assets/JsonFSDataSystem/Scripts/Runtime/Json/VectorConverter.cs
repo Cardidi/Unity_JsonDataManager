@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 
-namespace xyz.ca2didi.Unity.JsonFSDataSystem.Json
+namespace Ca2didi.JsonFSDataSystem.Json
 {
     public class Vector2Converter : JsonConverter<Vector2>
     {

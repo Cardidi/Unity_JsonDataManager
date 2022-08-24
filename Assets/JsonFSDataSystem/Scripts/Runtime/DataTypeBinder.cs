@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace xyz.ca2didi.Unity.JsonFSDataSystem
+namespace Ca2didi.JsonFSDataSystem
 {
     public class DataTypeBinder
     {

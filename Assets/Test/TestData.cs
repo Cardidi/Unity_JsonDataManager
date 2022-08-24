@@ -1,8 +1,8 @@
 ﻿using System;
+using Ca2didi.JsonFSDataSystem;
 using Newtonsoft.Json;
-using xyz.ca2didi.Unity.JsonFSDataSystem;
 
-namespace xyz.ca2didi.Unity.Test
+namespace Test
 {
     [Serializable, JsonTypeDefine(typeof(TestData), "test")]
     public class TestData

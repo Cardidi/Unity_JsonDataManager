@@ -1,7 +1,7 @@
 ﻿using System;
-using xyz.ca2didi.Unity.JsonFSDataSystem.FS;
+using Ca2didi.JsonFSDataSystem.FS;
 
-namespace xyz.ca2didi.Unity.JsonFSDataSystem.Exceptions
+namespace Ca2didi.JsonFSDataSystem.Exceptions
 {
     public class NotFolderPathException : Exception
     {

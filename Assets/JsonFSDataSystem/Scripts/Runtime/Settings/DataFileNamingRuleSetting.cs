@@ -1,7 +1,7 @@
 using System;
 using System.Text.RegularExpressions;
 
-namespace xyz.ca2didi.Unity.JsonFSDataSystem.Settings
+namespace Ca2didi.JsonFSDataSystem.Settings
 {
     public class DataFileNamingRuleSetting
     {

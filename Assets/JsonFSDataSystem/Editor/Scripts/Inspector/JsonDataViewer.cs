@@ -1,11 +1,10 @@
 ﻿using System.IO;
+using Ca2didi.JsonFSDataSystem.FS;
 using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;
-using xyz.ca2didi.Unity.JsonFSDataSystem;
-using xyz.ca2didi.Unity.JsonFSDataSystem.FS;
 
-namespace JsonFSDataSystem.Editor.Scripts.Inspector
+namespace Ca2didi.JsonFSDataSystem.Editor.Inspector
 {
     public class JsonDataViewer : EditorWindow
     {
@@ -40,7 +39,7 @@ namespace JsonFSDataSystem.Editor.Scripts.Inspector
             {
                 Debug.LogWarning(
                     "DataManager was closed by Json Data Viewer. Please check if your code have not handle with DataManager closing call.");
-                DataManager.Instance.CloseContainerAsync();
+                DataManager.Instance.CloseAsync();
             }
             
             DrawToolbar();

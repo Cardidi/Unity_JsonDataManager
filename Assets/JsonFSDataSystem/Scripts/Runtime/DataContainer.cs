@@ -3,12 +3,13 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Ca2didi.JsonFSDataSystem.Exceptions;
+using Ca2didi.JsonFSDataSystem.FS;
 using Newtonsoft.Json.Linq;
-using xyz.ca2didi.Unity.JsonFSDataSystem.Exceptions;
-using xyz.ca2didi.Unity.JsonFSDataSystem.FS;
 
-namespace xyz.ca2didi.Unity.JsonFSDataSystem
+namespace Ca2didi.JsonFSDataSystem
 {
 
     /// <summary>
@@ -76,9 +77,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             DeleteSafetyChecker();
 
             var sta = FSPath.IsStaticPath(ticket.RootPath);
-            await DataManager.Instance.DoCallback((FSPath.IsStaticPath(ticket.RootPath)
-                ? DataManagerCallbackTiming.BeforeWriteStatic
-                : DataManagerCallbackTiming.BeforeWriteCurrent));
+            await DataManager.Instance.DoCallback(DataManagerCallbackTiming.BeforeWrite);
             
             await Task.Run(async () =>
             {
@@ -319,7 +318,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             var dispose = DisposeCurrentContainerAsync();
             
             _currentContainer = await Task.Run(() => new ContainerTicket(FSPath.CurrentPathRoot));
-            await DataManager.Instance.DoCallback(DataManagerCallbackTiming.AfterNewCurrent);
+            await DataManager.Instance.DoCallback(DataManagerCallbackTiming.AfterNew);
             
             await dispose;
             return _currentContainer;
@@ -331,29 +330,32 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         /// <param name="ticket">New container with data</param>
         /// <returns>If ticket is refer to a static or disposed container, it will return null.</returns>
         /// <exception cref="ArgumentNullException">If ticket is null, report it.</exception>
-        public async Task<ContainerTicket> UseContainerAsync(DiskTicket ticket)
+        public ConfiguredTaskAwaitable<ContainerTicket> UseContainerAsync(DiskTicket ticket)
         {
             DataManager.StartChecker();
             DiskScanSafetyChecker();
-            if (ticket == null)
-                throw new ArgumentNullException(nameof(ticket));
+            return Task.Run(async () =>
+            {
+                if (ticket == null)
+                    throw new ArgumentNullException(nameof(ticket));
 
-            if (ticket.IsStatic || ticket.IsDisposed)
-                return null;
+                if (ticket.IsStatic || ticket.IsDisposed)
+                    return null;
 
-            var dispose = DisposeCurrentContainerAsync();
-            
-            _currentContainer = await Task.Run(ticket.Construct);
-            await DataManager.Instance.DoCallback(DataManagerCallbackTiming.AfterReadCurrent);
-            
-            await dispose;
-            return _currentContainer;
+                var dispose = DisposeCurrentContainerAsync();
+
+                _currentContainer = await Task.Run(ticket.Construct);
+                await DataManager.Instance.DoCallback(DataManagerCallbackTiming.AfterRead);
+
+                await dispose;
+                return _currentContainer;
+            }).ConfigureAwait(false);
         }
 
         /// <summary>
         /// Destroy current container.It will automatically dispose older current container.
         /// </summary>
-        public Task DestroyCurrentContainerAsync()
+        public ConfiguredTaskAwaitable DestroyCurrentContainerAsync()
         {
             DataManager.StartChecker();
             DiskScanSafetyChecker();
@@ -361,16 +363,16 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             return DisposeCurrentContainerAsync();
         }
 
-        private Task DisposeCurrentContainerAsync()
+        private ConfiguredTaskAwaitable DisposeCurrentContainerAsync()
         {
             if (_currentContainer != null)
             {
                 var c = _currentContainer;
                 _currentContainer = null;
-                return Task.Run(c.Dispose);
+                return Task.Run(c.Dispose).ConfigureAwait(false);
             }
             
-            return Task.CompletedTask;
+            return Task.CompletedTask.ConfigureAwait(false);
         }
         
         /// <summary>
@@ -402,7 +404,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         /// Clean dirty flag of all files and make sure changes has been committed to json tree.
         /// </summary>
         /// <returns></returns>
-        public Task RefreshContainer() => DataManager.Instance.FlushAllData();
+        public ConfiguredTaskAwaitable RefreshContainer() => DataManager.Instance.FlushAllData();
 
         #endregion
         
@@ -466,7 +468,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             return _staticDiskTicket;
         }
 
-        internal Task ScanJsonFile() => Task.Run(() =>
+        internal void ScanJsonFile()
         {
             DiskTicket stct = null;
             var ts = new List<DiskTicket>();
@@ -537,9 +539,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                 _usedNum?.Clear();
                 _usedNum = nums;
             }
-            
-            DataManager.Instance.DoCallback(DataManagerCallbackTiming.AfterReadStatic).Wait();
-        });
+        }
 
         private void DiskScanSafetyChecker()
         {
@@ -555,7 +555,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         private List<DataTypeBinder> binder;
         private Hashtable typeStrMap;
 
-        internal Task ScanBinders() => Task.Run(() =>
+        internal void ScanBinders()
         {
             var bid = new List<DataTypeBinder>();
             var map = new Hashtable();
@@ -586,7 +586,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                 typeStrMap?.Clear();
                 typeStrMap = map;
             }
-        });
+        }
 
         /// <summary>
         /// Find a binder via it's type string.
