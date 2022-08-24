@@ -2,7 +2,7 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace xyz.ca2didi.Unity.JsonFSDataSystem.Exceptions
+namespace Ca2didi.JsonFSDataSystem.Exceptions
 {
     public class DataStructureBrokenException : Exception
     {

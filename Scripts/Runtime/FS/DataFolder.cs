@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Ca2didi.JsonFSDataSystem.Exceptions;
 using Newtonsoft.Json.Linq;
-using xyz.ca2didi.Unity.JsonFSDataSystem.Exceptions;
 
-namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
+namespace Ca2didi.JsonFSDataSystem.FS
 {
     public class DataFolder
     {

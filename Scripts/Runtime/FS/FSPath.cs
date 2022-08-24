@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
-using xyz.ca2didi.Unity.JsonFSDataSystem.Exceptions;
+using Ca2didi.JsonFSDataSystem.Exceptions;
 
-namespace xyz.ca2didi.Unity.JsonFSDataSystem.FS
+namespace Ca2didi.JsonFSDataSystem.FS
 {
     
     /// <summary>

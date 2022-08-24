@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
+using Ca2didi.JsonFSDataSystem.Json;
+using Ca2didi.JsonFSDataSystem.Settings;
 using Newtonsoft.Json;
 using UnityEngine;
-using xyz.ca2didi.Unity.JsonFSDataSystem.Json;
-using xyz.ca2didi.Unity.JsonFSDataSystem.Settings;
 
-namespace xyz.ca2didi.Unity.JsonFSDataSystem
+namespace Ca2didi.JsonFSDataSystem
 {
     // Type Definitions
     [JsonTypeDefine(typeof(int), "int")]
@@ -22,8 +22,6 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         #region StaticManagement
         
         public static DataManager Instance { get; protected set; }
-
-        public static DataContainer InsContainer => Instance?._container;
 
         public static bool IsEnabled { get; private set; }
 
@@ -41,26 +39,22 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                 throw new InvalidOperationException("You must make sure DataManager has booted");
         }
 
-        public static DataManager CreateNew([NotNull] DataManagerSetting setting, Action<Exception> err = null)
+        public static ConfiguredTaskAwaitable<DataManager> CreateNewAsync(DataManagerSetting setting = null, Action<Exception> err = null)
         {
+            if (setting == null)
+                setting = new DataManagerSetting();
+            
             if (Instance != null)
                 throw new InvalidOperationException("DataManager has already booted.");
 
-            err ??= e => Debug.LogError(e);
             var ins = new DataManager(setting, err);
-            return ins;
+            return Task.Run(() => ins.BootContainer(err)).ConfigureAwait(false);
         }
-        
-        public static DataManager CreateNew(Action<Exception> err = null)
-        {
-            if (Instance != null)
-                throw new InvalidOperationException("DataManager has already booted.");
 
-            err ??= e => Debug.LogError(e);
-            var ins = new DataManager(new DataManagerSetting(), err);
-            return ins;
+        public static DataManager CreateNew(DataManagerSetting setting = null, Action<Exception> err = null)
+        {
+            return CreateNewAsync(setting, err).GetAwaiter().GetResult();
         }
-        
 
 
         #endregion
@@ -97,46 +91,51 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             }
         }
 
-        public async Task CloseContainerAsync()
+        public void Close()
         {
-            IsEnabled = false;
-            if (Instance == null) return;
-            
-            await Task.Run(async () =>
+            CloseAsync().GetAwaiter().GetResult();
+        }
+        
+        public ConfiguredTaskAwaitable CloseAsync()
+        {
+            return Task.Run(async () =>
             {
+                IsEnabled = false;
+                if (Instance == null) return;
+
                 lock (Instance)
                 {
                     if (Closing) return;
                     Closing = true;
                 }
-            
+
                 await Container.WriteStaticAsync();
                 await Container.DestroyCurrentContainerAsync();
-            
+
                 lock (Instance)
                 {
                     Instance = null;
                     Closing = false;
                 }
-            });
+            }).ConfigureAwait(false);
         }
 
-        public async Task<DataManager> BootContainerAsync(Action<Exception> err = null)
-        {            
+        private DataManager BootContainer(Action<Exception> err = null)
+        {
             // Init container
-            if (Instance != null) return Instance;
+            if (Instance != null) return null;
             try
             {
                 Instance = this;
                 _container = new DataContainer();
-                await _container.ScanBinders();
-                await _container.ScanJsonFile();
+                _container.ScanBinders();
+                _container.ScanJsonFile();
             }
             catch (Exception e)
             {
                 Instance = null;
-                if (err == null) throw e;
-                err.Invoke(e);
+                if (err == null) Debug.LogError(e);
+                else err.Invoke(e);
                 return null;
             }
 
@@ -158,7 +157,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
             }
         }
 
-        internal Task FlushAllData()
+        internal ConfiguredTaskAwaitable FlushAllData()
         {
             Action[] list;
             lock (flushDataBufferList)
@@ -180,7 +179,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                         Debug.LogError(e);
                     }
                 }
-            });
+            }).ConfigureAwait(false);
 
         }
         
@@ -199,7 +198,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
         /// <param name="cb">callback pointer</param>
         public bool RemoveCallback(Func<DataManagerCallbackTiming, Task> cb) => callbacks.Remove(cb);
 
-        internal Task DoCallback(DataManagerCallbackTiming timing)
+        internal ConfiguredTaskAwaitable DoCallback(DataManagerCallbackTiming timing)
         {
             var cbs = callbacks.ToArray();
             var tsks = new List<Task>();
@@ -218,7 +217,7 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
                 }
             }
 
-            return Task.WhenAll(tsks.ToArray());
+            return Task.WhenAll(tsks.ToArray()).ConfigureAwait(false);
         }
 
         private Action<Exception> _errorHandle;
@@ -238,10 +237,8 @@ namespace xyz.ca2didi.Unity.JsonFSDataSystem
     [Flags]
     public enum DataManagerCallbackTiming
     {
-        BeforeWriteCurrent = 1,
-        BeforeWriteStatic = 2,
-        AfterReadCurrent = 4,
-        AfterReadStatic = 8,
-        AfterNewCurrent = 16
+        BeforeWrite = 1,
+        AfterRead = 2,
+        AfterNew = 4
     }
 }
