@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Ca2didi.JsonFSDataSystem.Exceptions;
 using Ca2didi.JsonFSDataSystem.FS;
@@ -69,7 +70,7 @@ namespace Ca2didi.JsonFSDataSystem
         public DateTime CreateTime { get; private set; }
         
         
-        public async Task WriteAsync(ContainerTicket ticket, string description = "")
+        public ConfiguredTaskAwaitable WriteAsync(ContainerTicket ticket, string description = "")
         {
             if (ticket == null)
                 throw new ArgumentNullException($"{nameof(ticket)}");
@@ -77,10 +78,10 @@ namespace Ca2didi.JsonFSDataSystem
             DeleteSafetyChecker();
 
             var sta = FSPath.IsStaticPath(ticket.RootPath);
-            await DataManager.Instance.DoCallback(DataManagerCallbackTiming.BeforeWrite);
             
-            await Task.Run(async () =>
+            return Task.Run(async () =>
             {
+                await DataManager.Instance.DoCallback(DataManagerCallbackTiming.BeforeWrite);
                 await DataManager.Instance.FlushAllData();
                 SaveTime = DateTime.UtcNow;
                 Description = description;
@@ -88,7 +89,7 @@ namespace Ca2didi.JsonFSDataSystem
 
                 if (fInf.Exists) fInf.Delete();
                 WriteInternal(fInf.Create());
-            });
+            }).ConfigureAwait(false);
         }
 
         public bool Delete(bool ignoreStatic = false)
@@ -310,18 +311,20 @@ namespace Ca2didi.JsonFSDataSystem
         /// Create a new container and set it as current container.It will automatically dispose older current container.
         /// </summary>
         /// <returns>New container</returns>
-        public async Task<ContainerTicket> NewContainerAsync()
+        public ConfiguredTaskAwaitable<ContainerTicket> NewContainerAsync()
         {
             DataManager.StartChecker();
             DiskScanSafetyChecker();
 
             var dispose = DisposeCurrentContainerAsync();
-            
-            _currentContainer = await Task.Run(() => new ContainerTicket(FSPath.CurrentPathRoot));
-            await DataManager.Instance.DoCallback(DataManagerCallbackTiming.AfterNew);
-            
-            await dispose;
-            return _currentContainer;
+            return Task.Run(async () =>
+            {
+                _currentContainer = new ContainerTicket(FSPath.CurrentPathRoot);
+                await DataManager.Instance.DoCallback(DataManagerCallbackTiming.AfterNew);
+                await dispose;
+                
+                return _currentContainer;
+            }).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -334,16 +337,17 @@ namespace Ca2didi.JsonFSDataSystem
         {
             DataManager.StartChecker();
             DiskScanSafetyChecker();
+            
+            if (ticket == null)
+                throw new ArgumentNullException(nameof(ticket));
+
+            if (ticket.IsStatic || ticket.IsDisposed)
+                return Task.FromCanceled<ContainerTicket>(CancellationToken.None).ConfigureAwait(false);
+
+            var dispose = DisposeCurrentContainerAsync();
+            
             return Task.Run(async () =>
             {
-                if (ticket == null)
-                    throw new ArgumentNullException(nameof(ticket));
-
-                if (ticket.IsStatic || ticket.IsDisposed)
-                    return null;
-
-                var dispose = DisposeCurrentContainerAsync();
-
                 _currentContainer = await Task.Run(ticket.Construct);
                 await DataManager.Instance.DoCallback(DataManagerCallbackTiming.AfterRead);
 
@@ -418,11 +422,11 @@ namespace Ca2didi.JsonFSDataSystem
         /// <summary>
         /// A shortcut to write static data.
         /// </summary>
-        public async Task WriteStaticAsync()
+        public ConfiguredTaskAwaitable WriteStaticAsync()
         {
             DataManager.StartChecker();
             
-            await _staticDiskTicket.WriteAsync(_staticContainer);
+            return _staticDiskTicket.WriteAsync(_staticContainer);
         }
 
         /// <summary>
