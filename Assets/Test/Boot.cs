@@ -8,6 +8,9 @@ namespace Test
         private void Awake()
         {
             var man = DataManager.CreateNew();
+            man.Container.NewContainerAsync().GetAwaiter().GetResult();
+
+            Debug.Log(man.Container.CurrentContainer);
             
             // if (DataFile.CreateOrGet(FSPath.StaticPathRoot + ".test").As<TestData>(out var t))
             // {
