@@ -81,7 +81,7 @@ namespace Ca2didi.JsonFSDataSystem
             
             return Task.Run(async () =>
             {
-                await DataManager.Instance.DoCallback(DataManagerCallbackTiming.BeforeWrite);
+                DataManager.Instance.DoCallback(DataManagerCallbackTiming.BeforeWrite);
                 await DataManager.Instance.FlushAllData();
                 SaveTime = DateTime.UtcNow;
                 Description = description;
@@ -320,7 +320,7 @@ namespace Ca2didi.JsonFSDataSystem
             return Task.Run(async () =>
             {
                 _currentContainer = new ContainerTicket(FSPath.CurrentPathRoot);
-                await DataManager.Instance.DoCallback(DataManagerCallbackTiming.AfterNew);
+                DataManager.Instance.DoCallback(DataManagerCallbackTiming.AfterNew);
                 await dispose;
                 
                 return _currentContainer;
@@ -349,7 +349,7 @@ namespace Ca2didi.JsonFSDataSystem
             return Task.Run(async () =>
             {
                 _currentContainer = await Task.Run(ticket.Construct);
-                await DataManager.Instance.DoCallback(DataManagerCallbackTiming.AfterRead);
+                DataManager.Instance.DoCallback(DataManagerCallbackTiming.AfterRead);
 
                 await dispose;
                 return _currentContainer;
