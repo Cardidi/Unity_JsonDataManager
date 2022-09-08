@@ -2,7 +2,7 @@
   "name": "ca2didi.fsdatasystem",
   "displayName": "Json FS Data System",
   "description": "Save your game data just like save file to your disk! Making data placed in a familiar way for developer and designer.",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "unity": "2020.3",
   "license": "GNU GPLv3",
   "dependencies": {
