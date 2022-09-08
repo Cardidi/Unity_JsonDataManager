@@ -184,40 +184,27 @@ namespace Ca2didi.JsonFSDataSystem
         }
         
 
-        private List<Func<DataManagerCallbackTiming, Task>> callbacks = new List<Func<DataManagerCallbackTiming, Task>>();
+        private List<Action<DataManagerCallbackTiming>> callbacks = new List<Action<DataManagerCallbackTiming>>();
 
         /// <summary>
         /// Add a callback while state of data has changed.
         /// </summary>
         /// <param name="cb">callback pointer</param>
-        public void AddCallback(Func<DataManagerCallbackTiming, Task> cb) => callbacks.Add(cb);
+        public void AddCallback(Action<DataManagerCallbackTiming> cb) => callbacks.Add(cb);
 
         /// <summary>
         /// Remove the callback while state of data has changed.
         /// </summary>
         /// <param name="cb">callback pointer</param>
-        public bool RemoveCallback(Func<DataManagerCallbackTiming, Task> cb) => callbacks.Remove(cb);
+        public bool RemoveCallback(Action<DataManagerCallbackTiming> cb) => callbacks.Remove(cb);
 
-        internal ConfiguredTaskAwaitable DoCallback(DataManagerCallbackTiming timing)
+        internal void DoCallback(DataManagerCallbackTiming timing)
         {
             var cbs = callbacks.ToArray();
-            var tsks = new List<Task>();
             foreach (var cb in cbs)
             {
-                var t = cb(timing);
-                if (t == null) continue;
-                if (t.IsCompleted)
-                {
-                    if (t.IsFaulted)
-                        Debug.LogError(t.Exception);
-                }
-                else
-                {
-                    tsks.Add(t);
-                }
+                cb.Invoke(timing);
             }
-
-            return Task.WhenAll(tsks.ToArray()).ConfigureAwait(false);
         }
 
         private Action<Exception> _errorHandle;
